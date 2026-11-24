@@ -527,7 +527,7 @@ const pct=x=>Math.round(x*100)+' %';
 
 /* ---------- Récompenses : XP, grades, série de jours, objectif du jour, succès ---------- */
 const GRADES=[[0,'Élève mécano'],[300,'Mécanicien'],[800,'Mécanicien confirmé'],[1600,'Technicien'],[2800,'Technicien certifié'],[4500,'Chef d’équipe'],[7000,'Inspecteur'],[10000,'Expert maintenance']];
-const GOAL=20;
+const GOAL=50;
 const dayKey=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const prevDay=k=>{const d=new Date(k+'T12:00:00');d.setDate(d.getDate()-1);return dayKey(d)};
 const masteryPct=k=>{const c=courseStats(statsAll(),k);return c.tot?c.mast/c.tot:0};
@@ -570,7 +570,7 @@ const BADGES=[
  ['serie3','Régulier','Révise 3 jours d’affilée',p=>p.bestStreak>=3,'3j'],
  ['serie7','Assidu','Révise 7 jours d’affilée',p=>p.bestStreak>=7,'7j'],
  ['serie14','Inarrêtable','Révise 14 jours d’affilée',p=>p.bestStreak>=14,'14j'],
- ['objectif','Objectif atteint','Réponds à 20 questions dans la même journée',p=>p.goalDays>=1,'20'],
+ ['objectif','Objectif atteint','Réponds à 50 questions dans la même journée',p=>p.goalDays>=1,'50'],
  ['objectif7','Semaine productive','Atteins l’objectif du jour 7 fois',p=>p.goalDays>=7,'7×'],
  ['fix25','Persévérant','Corrige 25 erreurs (réussir une question ratée avant)',p=>p.fixes>=25,'25✓'],
  ['jump5','Belle remontée','Gagne 5 points entre deux tests blancs',p=>p.maxJump>=5,'+5'],
