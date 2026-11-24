@@ -531,6 +531,8 @@ const GOAL=20;
 const dayKey=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const prevDay=k=>{const d=new Date(k+'T12:00:00');d.setDate(d.getDate()-1);return dayKey(d)};
 const masteryPct=k=>{const c=courseStats(statsAll(),k);return c.tot?c.mast/c.tot:0};
+// Avancement affiché : question réussie 2 fois de suite = 1, réussie à la dernière tentative = 0,5, sinon 0
+const progressPct=k=>{const st=statsAll(),qs=BANK.filter(q=>q.c===k);if(!qs.length)return 0;let s=0;qs.forEach(q=>{const x=st[q.id];if(!x||!x.lastOk)return;s+=x.streak>=2?1:.5});return s/qs.length};
 function statsAll(){const st={};for(const h of P.history)for(const [id,r] of h.res||[]){if(!BY_ID[id])continue;const s=st[id]||(st[id]={s:0,w:0,streak:0,lastOk:true});s.s++;if(r===1){s.streak++;s.lastOk=true}else{s.w++;s.streak=0;s.lastOk=false}}return st}
 function profile(){
   const H=P.history.slice().sort((a,b)=>a.t-b.t),last={},days={};
@@ -629,7 +631,7 @@ async function session(){
 async function authed(path,opt={}){const s=await session();return sbFetch(path,{...opt,headers:{Authorization:'Bearer '+s.token,Prefer:'return=representation',...(opt.headers||{})}})}
 function myStats(){
   const p=profile(),ex=P.history.filter(h=>h.mode==='exam'&&h.n>=5).map(note);
-  const courses={};Object.keys(COURSES).forEach(k=>courses[k]=Math.round(masteryPct(k)*100));
+  const courses={};Object.keys(COURSES).forEach(k=>courses[k]=Math.round(progressPct(k)*100));
   return{xp:p.xp,grade:p.grade,badges:earned(p),best_exam:ex.length?Math.max(...ex):null,sessions:p.sessions,answered:p.answered,streak:p.streak,best_streak:p.bestStreak,courses,updated_at:new Date().toISOString()};
 }
 const pid=()=>me&&(me.pid||(sess&&sess.uid));
@@ -753,7 +755,7 @@ function playerView(r,rows){
     <div><span>Série actuelle</span><b>${r.streak||0} j</b></div>
     <div><span>Questions répondues</span><b>${r.answered||0}</b></div>
   </div>
-  <h2>Maîtrise par cours</h2>
+  <h2>Maîtrise par cours</h2><p class="small-note">Question réussie 2 fois de suite : acquise. Réussie à la dernière tentative : à moitié. Ratée ou jamais vue : 0.</p>
   <div class="rows">${Object.keys(COURSES).map(k=>{const v=Math.max(0,Math.min(100,+((r.courses||{})[k])||0));return`<div class="row"><span>${COURSES[k].n}</span><span class="m"><i style="width:${v}%;background:${COURSES[k].c}"></i></span><span>${v} %</span></div>`}).join('')}</div>
   <h2>Badges (${BADGES.filter(b=>got.has(b[0])).length}/${BADGES.length})</h2>
   <div class="bgrid">${BADGES.map(b=>`<span class="bmini ${got.has(b[0])?'':'off'}" title="${esc(b[1])}">${badgeIcon(b,got.has(b[0]))}<small>${esc(b[1])}</small></span>`).join('')}</div>
