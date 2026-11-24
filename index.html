@@ -664,7 +664,8 @@ async function pullHistory(){
     const ids=new Set(P.history.map(h=>h.id)),add=rem.filter(h=>h&&typeof h.id==='string'&&typeof h.t==='number'&&Array.isArray(h.res)&&TESTS[h.test]&&!ids.has(h.id));
     if(add.length){P.history=P.history.concat(add);persist()}return add.length}catch(e){return 0}
 }
-async function pushStatsNow(){if(!me)return;try{await authed('/rest/v1/players?id=eq.'+pid(),{method:'PATCH',body:JSON.stringify(myStats())})}catch(e){}}
+// N'écrase jamais un score plus élevé (ex. progression faite sur un ancien appareil non synchronisé)
+async function pushStatsNow(){if(!me)return;const st=myStats();try{await authed('/rest/v1/players?id=eq.'+pid()+'&xp=lte.'+st.xp,{method:'PATCH',body:JSON.stringify(st)})}catch(e){}}
 let pushing=null;
 function pushStats(){if(!me)return;if(pushing)return;pushing=Promise.all([pushStatsNow(),pushHistory()]).finally(()=>{pushing=null})}
 async function syncOnStart(){if(!me)return;const n=await pullHistory();if(n&&view==='home')setup(true);pushStats()}
