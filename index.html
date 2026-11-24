@@ -193,6 +193,10 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .pset{margin-top:20px}.pset summary{cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center}
 .bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px}
 .bmini{display:grid;justify-items:center;gap:4px;text-align:center}.bmini small{font-size:11px;color:var(--mute);line-height:1.2}.bmini.off{opacity:.45}
+.tabs2{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.fl{display:block;font-weight:600;margin:12px 0 4px}
+.fi{width:100%;min-height:48px;font:inherit;font-size:16px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+#pf .go{margin-top:14px}
 @media(pointer:coarse){.hint{display:none}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -615,7 +619,8 @@ async function session(){
   if(sess&&sess.refresh){
     const r=await sbFetch('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:sess.refresh})});
     if(r.ok){const d=await r.json();sess={token:d.access_token,refresh:d.refresh_token,exp:d.expires_at||now+d.expires_in,uid:d.user.id};LS.set('emhar-sb',sess);return sess}
-    if(me)throw new Error('session'); // ne pas créer un nouveau compte : le profil existant serait perdu
+    if(me&&!me.pw)throw new Error('session');
+    me=null;LS.set('emhar-me',null);
   }
   const r=await sbFetch('/auth/v1/signup',{method:'POST',body:'{}'});
   if(!r.ok)throw new Error('signup');
@@ -627,62 +632,114 @@ function myStats(){
   const courses={};Object.keys(COURSES).forEach(k=>courses[k]=Math.round(masteryPct(k)*100));
   return{xp:p.xp,grade:p.grade,badges:earned(p),best_exam:ex.length?Math.max(...ex):null,sessions:p.sessions,answered:p.answered,streak:p.streak,best_streak:p.bestStreak,courses,updated_at:new Date().toISOString()};
 }
-async function createProfile(pseudo){
+const pid=()=>me&&(me.pid||(sess&&sess.uid));
+async function rpc(fn,args){const r=await authed('/rest/v1/rpc/'+fn,{method:'POST',body:JSON.stringify(args)});if(!r.ok)throw new Error('rpc');return r.json()}
+async function setPassword(pw){return rpc('set_profile_password',{pw})}
+async function createProfile(pseudo,pw){
+  const s=await session();
   const r=await authed('/rest/v1/players',{method:'POST',body:JSON.stringify({pseudo,...myStats()})});
   if(r.status===409)return 'pris';
   if(!r.ok)return 'erreur';
-  me={pseudo};LS.set('emhar-me',me);return 'ok';
+  me={pseudo,pid:s.uid,pw:0};LS.set('emhar-me',me);
+  if(pw&&await setPassword(pw)==='ok'){me.pw=1;LS.set('emhar-me',me)}
+  await pushHistory();return 'ok';
+}
+async function loginProfile(pseudo,pw){
+  const r=await rpc('login_profile',{p_pseudo:pseudo,pw});
+  if(typeof r!=='string'||!r.startsWith('ok:'))return r;
+  const id=r.slice(3);
+  const row=await sbFetch('/rest/v1/players?select=pseudo&id=eq.'+id).then(x=>x.json()).catch(()=>[]);
+  me={pseudo:(row[0]&&row[0].pseudo)||pseudo,pid:id,pw:1};LS.set('emhar-me',me);
+  await pullHistory();await pushHistory();await pushStatsNow();return 'ok';
 }
 async function renameProfile(pseudo){
-  const r=await authed('/rest/v1/players?id=eq.'+sess.uid,{method:'PATCH',body:JSON.stringify({pseudo})});
-  if(r.status===409)return 'pris';if(!r.ok)return 'erreur';me={pseudo};LS.set('emhar-me',me);return 'ok';
+  const r=await authed('/rest/v1/players?id=eq.'+pid(),{method:'PATCH',body:JSON.stringify({pseudo})});
+  if(r.status===409)return 'pris';if(!r.ok)return 'erreur';me.pseudo=pseudo;LS.set('emhar-me',me);return 'ok';
 }
+async function pushHistory(){if(!me)return;try{await authed('/rest/v1/progress',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({player_id:pid(),history:P.history,updated_at:new Date().toISOString()})})}catch(e){}}
+async function pullHistory(){
+  if(!me)return 0;
+  try{const r=await authed('/rest/v1/progress?select=history&player_id=eq.'+pid());if(!r.ok)return 0;
+    const d=await r.json(),rem=d[0]&&Array.isArray(d[0].history)?d[0].history:[];
+    const ids=new Set(P.history.map(h=>h.id)),add=rem.filter(h=>h&&typeof h.id==='string'&&typeof h.t==='number'&&Array.isArray(h.res)&&TESTS[h.test]&&!ids.has(h.id));
+    if(add.length){P.history=P.history.concat(add);persist()}return add.length}catch(e){return 0}
+}
+async function pushStatsNow(){if(!me)return;try{await authed('/rest/v1/players?id=eq.'+pid(),{method:'PATCH',body:JSON.stringify(myStats())})}catch(e){}}
 let pushing=null;
-function pushStats(){if(!me)return;if(pushing)return;pushing=authed('/rest/v1/players?id=eq.'+(sess&&sess.uid),{method:'PATCH',body:JSON.stringify(myStats())}).catch(()=>{}).finally(()=>{pushing=null})}
+function pushStats(){if(!me)return;if(pushing)return;pushing=Promise.all([pushStatsNow(),pushHistory()]).finally(()=>{pushing=null})}
+async function syncOnStart(){if(!me)return;const n=await pullHistory();if(n&&view==='home')setup(true);pushStats()}
 async function loadBoard(){
   const r=await sbFetch('/rest/v1/players?select=id,pseudo,xp,grade,badges,best_exam,sessions,answered,streak,best_streak,courses,updated_at&order=xp.desc&limit=200');
   if(!r.ok)throw new Error('board');lbCache=await r.json();return lbCache;
 }
 const validPseudo=s=>/^[\p{L}\p{N} _.\-]{2,20}$/u.test(s);
-function pseudoForm(cur){return `<form id="pf" class="pform"><label for="pin"><b>${cur?'Change ton pseudo':'Choisis ton pseudo'}</b><span class="small-note">2 à 20 caractères : lettres, chiffres, espace, tiret, point. Il sera visible par toute la promo.</span></label>
-  <div class="prow"><input id="pin" maxlength="20" autocomplete="off" value="${esc(cur||'')}" placeholder="Ex. : Twisty12"><button class="go" type="submit">${cur?'Enregistrer':'Rejoindre le classement'}</button></div><p id="pmsg" class="small-note" role="status"></p></form>`}
+function pseudoForm(cur){
+  if(cur)return `<form id="pf" class="pform"><label for="pin"><b>Change ton pseudo</b></label>
+  <div class="prow"><input id="pin" maxlength="20" autocomplete="off" value="${esc(cur)}"><button class="go" type="submit">Enregistrer</button></div><p id="pmsg" class="small-note" role="status"></p></form>`;
+  return `<div class="pform">
+  <div class="tabs2"><button type="button" class="chip test" data-pt="new" aria-pressed="true">Nouveau profil</button><button type="button" class="chip test" data-pt="login" aria-pressed="false">J'ai déjà un profil</button></div>
+  <form id="pf" data-mode="new">
+    <p class="small-note" id="pintro">Choisis un pseudo (visible par toute la promo) et un mot de passe pour retrouver ton profil sur tes autres appareils.</p>
+    <label class="fl" for="pin">Pseudo</label><input id="pin" class="fi" maxlength="20" autocomplete="username" placeholder="Ex. : Twisty12">
+    <label class="fl" for="ppw">Mot de passe (6 caractères minimum)</label><input id="ppw" class="fi" type="password" maxlength="72" autocomplete="new-password">
+    <button class="go" type="submit" id="psub">Rejoindre le classement</button>
+    <p id="pmsg" class="small-note" role="status"></p>
+  </form></div>`}
 function bindPseudo(cur){
   const f=document.getElementById('pf');if(!f)return;
-  f.onsubmit=async e=>{e.preventDefault();const v=document.getElementById('pin').value.trim(),m=document.getElementById('pmsg');
-    if(!validPseudo(v)){m.textContent='Pseudo invalide : 2 à 20 caractères (lettres, chiffres, espace, tiret, point).';return}
-    m.textContent='Enregistrement…';
-    try{const r=cur?await renameProfile(v):await createProfile(v);
-      if(r==='pris')m.textContent='Ce pseudo est déjà pris, choisis-en un autre.';else if(r!=='ok')m.textContent='Impossible d’enregistrer pour le moment. Réessaie plus tard.';else leaderboard()}
-    catch(err){m.textContent=err.message==='session'?'Ta session a expiré et ton profil ne peut plus être modifié depuis cet appareil.':'Pas de connexion au classement. Vérifie ta connexion internet.'}};
+  app.querySelectorAll('[data-pt]').forEach(b=>b.onclick=()=>{const l=b.dataset.pt==='login';f.dataset.mode=b.dataset.pt;
+    app.querySelectorAll('[data-pt]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+    document.getElementById('pintro').textContent=l?'Entre le pseudo et le mot de passe de ton profil pour le retrouver sur cet appareil, avec ta progression.':'Choisis un pseudo (visible par toute la promo) et un mot de passe pour retrouver ton profil sur tes autres appareils.';
+    document.getElementById('ppw').autocomplete=l?'current-password':'new-password';
+    document.getElementById('psub').textContent=l?'Me connecter':'Rejoindre le classement';document.getElementById('pmsg').textContent=''});
+  f.onsubmit=async e=>{e.preventDefault();const v=document.getElementById('pin').value.trim(),m=document.getElementById('pmsg'),pwEl=document.getElementById('ppw'),pw=pwEl?pwEl.value:'';
+    const mode=cur?'rename':f.dataset.mode;
+    if(mode!=='login'&&!validPseudo(v)){m.textContent='Pseudo invalide : 2 à 20 caractères (lettres, chiffres, espace, tiret, point).';return}
+    if(mode==='new'&&pw.length<6){m.textContent='Le mot de passe doit faire au moins 6 caractères.';return}
+    if(mode==='login'&&(!v||!pw)){m.textContent='Entre ton pseudo et ton mot de passe.';return}
+    m.textContent=mode==='login'?'Connexion…':'Enregistrement…';
+    try{const r=mode==='rename'?await renameProfile(v):mode==='new'?await createProfile(v,pw):await loginProfile(v,pw);
+      const msg={pris:'Ce pseudo est déjà pris. Si c’est le tien, choisis « J’ai déjà un profil ».',invalid:'Pseudo ou mot de passe incorrect. Un profil sans mot de passe ne peut pas être retrouvé : ajoutes-en un depuis l’appareil où il a été créé.',locked:'Trop d’essais. Réessaie dans 15 minutes.',already:'Cet appareil a déjà son propre profil. Déconnecte-le d’abord (Mon profil, en bas du classement).'};
+      if(r==='ok')leaderboard();else m.textContent=msg[r]||'Impossible pour le moment. Réessaie plus tard.'}
+    catch(err){m.textContent=err.message==='session'?'Ta session a expiré sur cet appareil.':'Pas de connexion au classement. Vérifie ta connexion internet.'}};
 }
+function pwForm(){return `<form id="pwf" class="pform"><label class="fl" for="npw"><b>${me&&me.pw?'Changer mon mot de passe':'Ajouter un mot de passe'}</b></label>
+  <span class="small-note">Il te permet de retrouver ton profil et ta progression sur un autre appareil (Classement → « J’ai déjà un profil »).</span>
+  <div class="prow"><input id="npw" type="password" maxlength="72" autocomplete="new-password" placeholder="6 caractères minimum"><button class="go" type="submit">Enregistrer</button></div><p id="pwmsg" class="small-note" role="status"></p></form>`}
+function bindPw(){const f=document.getElementById('pwf');if(!f)return;f.onsubmit=async e=>{e.preventDefault();const v=document.getElementById('npw').value,m=document.getElementById('pwmsg');
+  if(v.length<6){m.textContent='6 caractères minimum.';return}m.textContent='Enregistrement…';
+  try{const r=await setPassword(v);if(r==='ok'){me.pw=1;LS.set('emhar-me',me);m.textContent='Mot de passe enregistré. Sur ton autre appareil : Classement → « J’ai déjà un profil ».';document.getElementById('npw').value=''}else m.textContent='Impossible pour le moment.'}
+  catch(err){m.textContent='Pas de connexion au classement.'}}}
 const SORTS={xp:['XP','xp'],best_exam:['Meilleur test blanc','best_exam'],best_streak:['Meilleure série','best_streak']};
 async function leaderboard(){
   view='board';clearInterval(timerId);S=null;
   app.innerHTML=`<div class="top"><button class="ghost small" id="back">← Accueil</button></div><h1>Classement de la promo</h1><p class="sub">Chargement…</p>`;
   document.getElementById('back').onclick=setup;window.scrollTo({top:0});
   let rows;
-  try{if(me)await pushStats(),await pushing;rows=await loadBoard()}
+  try{if(me){if(me.pw==null){try{me.pw=await rpc('has_profile_password',{})?1:0;LS.set('emhar-me',me)}catch(e){}}await pullHistory();await pushStatsNow();await pushHistory()}rows=await loadBoard()}
   catch(e){if(view!=='board')return;app.innerHTML=`<div class="top"><button class="ghost small" id="back">← Accueil</button></div><h1>Classement de la promo</h1>
     <p class="empty neutral">Le classement n'est pas joignable. Vérifie ta connexion internet. Dans l'aperçu sur claude.ai, le classement est bloqué : ouvre le fichier HTML téléchargé.</p>`;document.getElementById('back').onclick=setup;return}
   if(view!=='board')return;
   const key=SORTS[lbSort][1];
   rows=rows.slice().sort((a,b)=>(b[key]??-1)-(a[key]??-1)||b.xp-a.xp);
-  const mine=sess&&me?sess.uid:null;
+  const mine=me?pid():null;
   app.innerHTML=`<div class="top"><button class="ghost small" id="back">← Accueil</button></div>
   <h1>Classement de la promo</h1><p class="sub">${rows.length} participant${rows.length>1?'s':''}${me?` · tu joues sous le pseudo <b>${esc(me.pseudo)}</b>`:''}</p>
-  ${me?'':pseudoForm('')}
+  ${me?(me.pw?'':`<p class="why mine" style="margin-top:12px"><b>Ajoute un mot de passe à ton profil</b> pour le retrouver sur ton téléphone ou un autre appareil, dans « Mon profil » en bas de la page.</p>`):pseudoForm('')}
   <div class="quick" style="margin:14px 0">${Object.entries(SORTS).map(([k,v])=>`<button class="chip test" data-sort="${k}" aria-pressed="${lbSort===k}">${v[0]}</button>`).join('')}</div>
   ${rows.length?`<div class="lb">${rows.map((r,i)=>`<button class="lbr ${r.id===mine?'me':''}" data-p="${esc(r.id)}">
     <span class="rk ${i<3?'r'+(i+1):''}">${i+1}</span>
     <span class="who"><b>${esc(r.pseudo)}${r.id===mine?' (toi)':''}</b><small>${esc(r.grade||'')} · ${(r.badges||[]).length} badge${(r.badges||[]).length>1?'s':''}</small></span>
     <span class="val">${lbSort==='xp'?`${r.xp}<small> XP</small>`:lbSort==='best_exam'?(r.best_exam==null?'—':fr(+r.best_exam)+'<small> /20</small>'):`${r.best_streak||0}<small> j</small>`}</span></button>`).join('')}</div>`:'<p class="empty neutral">Personne n’a encore rejoint le classement. Sois le premier !</p>'}
-  ${me?`<details class="pset"><summary>Mon pseudo</summary>${pseudoForm(me.pseudo)}<button class="ghost" id="leave" style="margin-top:10px">Quitter le classement</button><p class="small-note">Ton profil est lié à cet appareil et à ce navigateur.</p></details>`:''}`;
+  ${me?`<details class="pset" ${me.pw?'':'open'}><summary>Mon profil</summary>${pwForm()}${pseudoForm(me.pseudo)}<button class="ghost" id="leave" style="margin-top:10px">Supprimer mon profil du classement</button> <button class="ghost" id="logout" style="margin-top:10px">Déconnecter cet appareil</button></details>`:''}`;
   const on=(id,f)=>{const e=document.getElementById(id);if(e)e.onclick=f};
-  on('back',setup);bindPseudo(me?me.pseudo:'');
+  on('back',setup);bindPseudo(me?me.pseudo:'');bindPw();
+  on('logout',()=>{const b=document.getElementById('logout');if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent=me.pw?'Confirmer (tu pourras te reconnecter avec ton mot de passe)':'Confirmer : sans mot de passe, ce profil sera perdu';return}
+    me=null;LS.set('emhar-me',null);sess=null;LS.set('emhar-sb',null);leaderboard()});
   app.querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{lbSort=b.dataset.sort;leaderboard()});
   app.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>playerView(rows.find(r=>r.id===b.dataset.p),rows));
   on('leave',async()=>{const b=document.getElementById('leave');if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent='Confirmer : supprimer mon profil du classement';return}
-    try{const r=await authed('/rest/v1/players?id=eq.'+sess.uid,{method:'DELETE'});if(r.ok){me=null;LS.set('emhar-me',null);leaderboard()}}catch(e){}});
+    try{const r=await authed('/rest/v1/players?id=eq.'+pid(),{method:'DELETE'});if(r.ok){me=null;LS.set('emhar-me',null);leaderboard()}}catch(e){}});
 }
 function playerView(r,rows){
   if(!r)return;view='player';
@@ -958,7 +1015,7 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-initCloud();
+initCloud();syncOnStart();
 setup();
 }
 </script>
