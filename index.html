@@ -152,7 +152,7 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .rc .go{width:auto;margin:0;min-height:48px;padding:0 18px;font-size:16px;white-space:nowrap}
 @media(max-width:600px){.rc{grid-template-columns:minmax(0,1fr)}.rc .go{width:100%}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.head h1{font-size:30px}}
 .pcard{display:grid;gap:14px;padding:16px;border-radius:18px;background:var(--card);border:1px solid var(--line);margin-bottom:8px}
-.pg{display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;align-items:center}
+.pg{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center}
 .pg b{font-size:22px;font-weight:800;display:block}
 .wings svg{width:64px;height:32px;fill:var(--A)}
 .lab{display:block;color:var(--mute);font-size:13px}
@@ -166,7 +166,8 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .bdg b{position:relative;font-size:13px;font-weight:800;color:var(--mute)}
 .bdg.on svg{fill:var(--A)}.bdg.on b{color:#10131a}
 .badges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.badge-c{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:14px;opacity:.65}
+.badge-c{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:14px}
+.badge-c:not(.got) b{color:var(--mute)}.badge-c .ico-badge{flex:none}
 .badge-c.got{opacity:1;background:var(--card)}
 .badge-c b,.nbi b{display:block}.badge-c span,.nbi span{color:var(--mute);font-size:13px}
 .grades{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
@@ -184,7 +185,7 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .prow input{flex:1 1 180px;min-height:48px;font:inherit;font-size:16px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 .prow .go{width:auto;margin:0;min-height:48px;padding:0 18px;font-size:16px}
 .lb{border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.lbr{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;text-align:left;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:var(--bg);min-height:60px}
+.lbr{display:grid;grid-template-columns:34px 40px minmax(0,1fr) auto auto;gap:12px;align-items:center;width:100%;text-align:left;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:var(--bg);min-height:60px}
 .lbr:last-child{border-bottom:0}.lbr.me{background:color-mix(in srgb,var(--A) 16%,var(--bg))}
 .rk{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--card)}
 .rk.r1{background:#e0a000;color:#10131a}.rk.r2{background:#b8c0cc;color:#10131a}.rk.r3{background:#c98a55;color:#10131a}
@@ -206,6 +207,15 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .fbi{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--bg);flex:none}
 .themes{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.themes .lab{margin-right:4px}
 .fta{min-height:140px;padding:12px;line-height:1.5;resize:vertical}
+.avbtn{position:relative;border:0;background:none;padding:0;border-radius:50%;width:58px;height:58px}
+.avbtn svg{display:block}.avedit{position:absolute;right:-4px;bottom:-4px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;background:var(--bg);border:1px solid var(--line);color:var(--ink)}
+.avgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:12px}
+.avc{display:grid;justify-items:center;gap:8px;padding:14px 6px;border:2px solid var(--line);border-radius:14px;background:var(--bg);text-align:center;min-height:120px}
+.avc span{font-size:13px;color:var(--mute);line-height:1.2}.avc[aria-pressed=true]{border-color:var(--ink);background:var(--card)}
+.ico-badge.locked{filter:grayscale(1);opacity:.35}
+.ico-av{flex:none;display:block}.ico-galon{flex:none;display:block}
+.phead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;margin-bottom:8px}.phead h1{margin:0}.phead .sub{margin:4px 0 0}
+.grades div{display:grid;justify-items:center;text-align:center;gap:4px}
 @media(pointer:coarse){.hint{display:none}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -534,6 +544,99 @@ function pickTargeted(N,courses){
 function lastErrors(){const h=testHistory().filter(h=>h.res.some(r=>r[1]!==1)).pop();return h?h.res.filter(r=>r[1]!==1).map(r=>BY_ID[r[0]]).filter(Boolean):[]}
 const pct=x=>Math.round(x*100)+' %';
 
+/* ---------- Icônes : médailles, galons, avatars ---------- */
+// Icônes EMHAR : succès (médailles), grades (galons d'épaule), avatars de profil. SVG pur, réutilisable dans l'outil.
+const ICONS=(()=>{
+const CAT={
+ debut:{n:'Premiers pas',c:'#3d7be0',d:'#1f4fa3',p:'#fff'},
+ volume:{n:'Endurance',c:'#7a5ce0',d:'#4b35a8',p:'#fff'},
+ perf:{n:'Performance',c:'#e0503f',d:'#a3281c',p:'#fff'},
+ regul:{n:'Régularité',c:'#ef8f2f',d:'#b25a0e',p:'#fff'},
+ perse:{n:'Persévérance',c:'#2fa866',d:'#1a6b3f',p:'#fff'},
+ maitre:{n:'Maîtrise',c:'#e2ad2b',d:'#9c7210',p:'#4a3206'}
+};
+const S='fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"';
+const F='fill="currentColor"';
+const txt=(x,y,t,s=11)=>`<text x="${x}" y="${y}" text-anchor="middle" font-family="Figtree,system-ui,sans-serif" font-weight="800" font-size="${s}" fill="currentColor">${t}</text>`;
+const cal=n=>`<g ${S}><rect x="20" y="20" width="24" height="22" rx="3"/><path d="M20 27h24M26 17v6M38 17v6"/></g>${txt(32,39.5,n,10)}`;
+const gear=()=>{let d='';const n=8;for(let i=0;i<n;i++){const a=i*2*Math.PI/n,w=0.22;const P=(r,b)=>`${(32+r*Math.cos(b)).toFixed(2)} ${(32+r*Math.sin(b)).toFixed(2)}`;d+=`${i?'L':'M'}${P(10.5,a-w*1.6)}L${P(15,a-w)}L${P(15,a+w)}L${P(10.5,a+w*1.6)}`}
+  return `<path ${F} fill-rule="evenodd" d="${d}Z M32 27a5 5 0 1 0 .01 0z"/>`};
+const PICTO={
+ premier:`<path ${F} d="M32 13c1.8 0 2.8 1.8 2.8 4.6v7.6l12.6 7.2v3.8l-12.6-3.6v7.9l4 3.1v2.9l-6.8-1.9-6.8 1.9v-2.9l4-3.1v-7.9l-12.6 3.6v-3.8l12.6-7.2v-7.6c0-2.8 1-4.6 2.8-4.6z"/>`,
+ blanc1:`<g ${S}><circle cx="32" cy="35" r="11"/><path d="M32 35v-6M28.5 19.5h7M32 19.5v4.5M41.5 25.5l2.2-2.2"/></g>`,
+ blanc12:`<g ${S}><rect x="21" y="18" width="22" height="27" rx="3"/><path d="M28 18v-2.5h8V18"/><path d="M26.5 32l4 4 7.5-8"/></g>`,
+ blanc5:`<g ${S}><path d="M25 18.5h17.5v22"/><rect x="20.5" y="23" width="17" height="21" rx="2"/></g>${txt(29,38.5,'5',11)}`,
+ synthese:`<g ${S}><path d="M32 15a10 10 0 0 0-6 18c1.5 1.2 2 2.6 2 4h8c0-1.4.5-2.8 2-4a10 10 0 0 0-6-18z"/><path d="M28.5 41.5h7M29.5 45.5h5"/></g>`,
+ q100:`<g ${S}><path d="M17 39a15 15 0 0 1 30 0"/><path d="M32 39l8-9"/></g><circle cx="32" cy="39" r="2.6" ${F}/>${txt(32,49.5,'100',8.5)}`,
+ q500:`<g ${S}><path d="M22 47l6-30h8l6 30"/></g><path d="M32 20v3M32 27v4.5M32 35.5v5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>`,
+ run10:`<g ${S}><circle cx="30" cy="34" r="12"/><circle cx="30" cy="34" r="6.5"/><path d="M30 34l15-15M40 19h5v5"/></g><circle cx="30" cy="34" r="2.2" ${F}/>`,
+ run25:`<g ${S}><path d="M19 27h26"/><path d="M19 27v7a3 3 0 0 0 3 3h3.5l3.5-5h6l3.5 5H42a3 3 0 0 0 3-3v-7"/><path d="M32 32v13M27 45h10"/></g>`,
+ serie3:cal(3),serie7:cal(7),
+ serie14:`<path ${F} d="M32 13c2 6.5 10 9.5 10 19.5a10 10 0 0 1-20 0c0-4.5 2.2-6.8 4.5-9 0 3.4 1.1 5.6 3.4 6.8 0-6.8 0-12.4 2.1-17.3z"/><path d="M32 41c-2.6 0-4-1.7-4-3.8 0-2.4 2-3.5 2.8-5.6 1.3 1.8 5.2 3 5.2 5.6 0 2.1-1.4 3.8-4 3.8z" fill="#ef8f2f"/>`,
+ objectif:`<path d="M22 47V15" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><rect x="22" y="16" width="21" height="14" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><path ${F} d="M22 16h7v7h-7zM36 16h7v7h-7zM29 23h7v7h-7z"/>`,
+ objectif7:[[20,26],[28,26],[36,26],[44,26],[24,37],[32,37],[40,37]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="3.4" ${F}/>`).join('')+`<path d="M18 45h28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>`,
+ fix25:`<path d="M20.5 43.5l13.5-13.5" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round"/><path d="M44.6 19.6a7 7 0 1 0-1 10.1" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"/>`,
+ jump5:`<g ${S}><path d="M17 42l9.5-9.5 6 6L46 25"/><path d="M38 25h8v8"/></g>`,
+ avance:`<g ${S}><circle cx="29" cy="32" r="11.5"/><path d="M29 25.5V32l4.5 3"/><path d="M43.5 26.5l4.5 5.5-4.5 5.5"/></g>`,
+ parfait:`<g ${S}><path d="M24 17h16v8.5a8 8 0 0 1-16 0z"/><path d="M24 20h-4.5a5 5 0 0 0 5 7M40 20h4.5a5 5 0 0 1-5 7"/><path d="M32 33.5V39M26 46h12M28.5 39h7v7"/></g>`,
+ mD:`<path d="M15 32h9M40 32h9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path ${F} d="M24 22.5v19L39.5 32z"/><path d="M40.5 22.5v19" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`,
+ mT:`<g ${S}><circle cx="33" cy="32" r="13"/><path d="M28 24.5v15M16 32h12M28 28l8.5-6V17M28 36l8.5 6v5"/></g><path ${F} d="M37.6 42.8l-6-1.2 3.2-3.8z"/>`,
+ mA:`<g ${S}><path d="M22 19.5v25L45 32z"/><path d="M15 25.5h7M15 38.5h7M45 32h5"/></g>${txt(26.8,28.7,'−',8)}${txt(26.8,41.5,'+',8)}`,
+ mS:gear(),
+ emhar1:`<path ${F} d="M26 31.5C18.5 31.5 13.5 28.5 11.5 24c.8 6.5 5.4 10.5 14.5 11.5zM38 31.5c7.5 0 12.5-3 14.5-7.5-.8 6.5-5.4 10.5-14.5 11.5z"/><path ${F} d="M14 29.5c2.2 2.6 6 4.1 12 4.4M50 29.5c-2.2 2.6-6 4.1-12 4.4" stroke="currentColor" stroke-width="1"/><circle cx="32" cy="33" r="7.5" ${F}/><path d="M32 13.5l1.9 3.9 4.3.6-3.1 3 .7 4.2-3.8-2-3.8 2 .7-4.2-3.1-3 4.3-.6z" ${F}/>`
+};
+const BCAT={premier:'debut',blanc1:'debut',synthese:'debut',q100:'volume',q500:'volume',blanc5:'volume',blanc12:'perf',run10:'perf',run25:'perf',avance:'perf',parfait:'perf',serie3:'regul',serie7:'regul',serie14:'regul',objectif:'regul',objectif7:'regul',fix25:'perse',jump5:'perse',mD:'maitre',mT:'maitre',mA:'maitre',mS:'maitre',emhar1:'maitre'};
+function badge(id,size=56,locked=false){
+  const k=CAT[BCAT[id]]||CAT.debut,special=id==='emhar1';
+  let ring='';for(let i=0;i<24;i++){const a=i*Math.PI/12;ring+=`${i?'L':'M'}${(32+30.5*Math.cos(a)).toFixed(2)} ${(32+30.5*Math.sin(a)).toFixed(2)}L${(32+28*Math.cos(a+Math.PI/24)).toFixed(2)} ${(32+28*Math.sin(a+Math.PI/24)).toFixed(2)}`}
+  const inner=id==='emhar1'?`<text x="32" y="36.2" text-anchor="middle" font-family="Figtree,system-ui,sans-serif" font-weight="800" font-size="7.5" fill="${k.c}">E1</text>`:'';
+  return `<svg class="ico-badge${locked?' locked':''}" viewBox="0 0 64 64" width="${size}" height="${size}" aria-hidden="true"><path d="${ring}Z" fill="${k.d}"/><circle cx="32" cy="32" r="25" fill="${k.c}"/><circle cx="32" cy="32" r="25" fill="none" stroke="#ffffff" stroke-opacity=".35" stroke-width="1.2"/>${special?`<circle cx="32" cy="32" r="21.5" fill="none" stroke="${k.p}" stroke-opacity=".5" stroke-width="1"/>`:''}<g style="color:${k.p}">${PICTO[id]||''}</g>${inner}</svg>`;
+}
+// Galons d'épaule : 1 à 4 barrettes argent (mécaniciens, techniciens) puis or (encadrement)
+const GRADE_DEF=[
+ {n:'Élève mécano',s:0,m:'silver',e:'prop'},{n:'Mécanicien',s:1,m:'silver',e:'prop'},{n:'Mécanicien confirmé',s:2,m:'silver',e:'prop'},{n:'Technicien',s:3,m:'silver',e:'prop'},
+ {n:'Technicien certifié',s:1,m:'gold',e:'wings'},{n:'Chef d’équipe',s:2,m:'gold',e:'wings'},{n:'Inspecteur',s:3,m:'gold',e:'wings'},{n:'Expert maintenance',s:4,m:'gold',e:'star'}];
+const WINGS='<path d="M-3.5-2C-9-2.5-14-4.5-19-9c1 3 2.5 5 4 6.3-1.6.1-3 0-4.4-.5 1.7 2.4 3.8 3.7 6 4.3-1.2.4-2.6.6-4 .5 2.6 1.9 6.5 2.6 13.9 2.4zM3.5-2C9-2.5 14-4.5 19-9c-1 3-2.5 5-4 6.3 1.6.1 3 0 4.4-.5-1.7 2.4-3.8 3.7-6 4.3 1.2.4 2.6.6 4 .5-2.6 1.9-6.5 2.6-13.9 2.4z"/>';
+function galon(i,size=60){
+  const g=GRADE_DEF[i],met=g.m==='gold'?['#f0c24a','#a8801b']:['#dfe5ec','#8994a3'];
+  let st='';for(let k=0;k<g.s;k++){const y=96-k*10;st+=`<rect x="11" y="${y}" width="38" height="6" rx="1" fill="${met[0]}"/><rect x="11" y="${y+4.6}" width="38" height="1.4" fill="${met[1]}"/>`}
+  const em=g.e==='prop'?`<g transform="translate(30 50)" fill="${met[0]}"><circle r="3"/><path d="M0-3c2-6 2-11 0-14-2 3-2 8 0 14zM2.6 1.5c6.4 1.3 10.9 3.6 12.7 6.6-3.6.2-8-1.8-12.7-6.6zM-2.6 1.5c-6.4 1.3-10.9 3.6-12.7 6.6 3.6.2 8-1.8 12.7-6.6z"/></g>`
+   :g.e==='wings'?`<g transform="translate(30 52)" fill="${met[0]}">${WINGS}<circle r="3.6"/></g>`
+   :`<g transform="translate(30 52)" fill="${met[0]}">${WINGS}<path d="M0-12l2.6 5.3 5.8.8-4.2 4.1 1 5.8L0 1.3-5.2 4l1-5.8-4.2-4.1 5.8-.8z"/></g>`;
+  return `<svg class="ico-galon" viewBox="0 0 60 112" width="${size*60/112}" height="${size}" aria-hidden="true"><path d="M7 108V24Q7 20 10.5 18L30 6l19.5 12Q53 20 53 24v84z" fill="#1b2a4a"/><path d="M7 108V24Q7 20 10.5 18L30 6l19.5 12Q53 20 53 24v84" fill="none" stroke="${met[1]}" stroke-width="1.5"/><circle cx="30" cy="20" r="4.6" fill="${met[0]}"/><circle cx="30" cy="20" r="4.6" fill="none" stroke="${met[1]}"/>${em}${st}</svg>`;
+}
+// Avatars de profil
+const W='fill="#fff"',WS='fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"';
+const AV=[
+ {id:'avion',n:'Avion de ligne',bg:'#2f6fdf',s:`<path ${W} d="M11 35.5c0-2.8 3-4.5 8-4.5h22l8.5-8.5H54l-3.2 9.3c2.6.9 3.7 2 3.7 3.7 0 2-2 3-5 3H19c-5 0-8-1-8-3z"/><path fill="#ffffffaa" d="M27 37.5l9 9h5.5l-4.5-9zM29 31l6-6h4.5l-3 6z"/><path d="M17 33.5h3M23 33.5h3M29 33.5h3M35 33.5h3" stroke="#2f6fdf" stroke-width="1.6" stroke-linecap="round"/>`},
+ {id:'helico',n:'Hélicoptère',bg:'#e0503f',s:`<ellipse cx="29" cy="35" rx="11" ry="7.5" ${W}/><path ${WS} stroke-width="3" d="M39 34.5h14M13 22.5h34M29 22.5v5M21 47.5h18M24.5 42v5.5M34 42v5.5"/><circle cx="53" cy="32" r="3.5" ${WS} stroke-width="2"/><path d="M22 33a7 5 0 0 1 7-5" stroke="#e0503f" stroke-width="2" fill="none" stroke-linecap="round"/>`},
+ {id:'reacteur',n:'Réacteur',bg:'#6b4fd8',s:(()=>{let b='';for(let i=0;i<10;i++){const a=i*Math.PI/5;b+=`<path d="M${(32+4.5*Math.cos(a)).toFixed(1)} ${(32+4.5*Math.sin(a)).toFixed(1)}Q${(32+11*Math.cos(a+.5)).toFixed(1)} ${(32+11*Math.sin(a+.5)).toFixed(1)} ${(32+15*Math.cos(a+.25)).toFixed(1)} ${(32+15*Math.sin(a+.25)).toFixed(1)}" ${WS} stroke-width="2.2"/>`}return `<circle cx="32" cy="32" r="18" ${WS} stroke-width="3.4"/>${b}<circle cx="32" cy="32" r="5" ${W}/>`})()},
+ {id:'helice',n:'Hélice',bg:'#2fa866',s:[0,120,240].map(r=>`<path ${W} transform="rotate(${r} 32 32)" d="M32 30c-3.5-6-4-13-.5-18 3 4.5 3.5 11 .5 18z"/>`).join('')+`<circle cx="32" cy="32" r="5" ${W}/><circle cx="32" cy="32" r="2" fill="#2fa866"/>`},
+ {id:'outils',n:'Clé et tournevis',bg:'#ef8f2f',s:`<g transform="rotate(45 32 32)"><rect x="29" y="11" width="6" height="15" rx="2.5" ${W}/><path ${WS} stroke-width="3" d="M32 26v20"/><path ${W} d="M30.5 46h3l-.5 4h-2z"/></g><g transform="rotate(-45 32 32)"><path ${WS} stroke-width="5" d="M32 24v25"/><path ${WS} stroke-width="4" d="M27 16.5a6.5 6.5 0 1 0 10 0"/></g>`},
+ {id:'casque',n:'Casque antibruit',bg:'#1d2b4f',s:`<path ${WS} stroke-width="4" d="M17 38a15 15 0 0 1 30 0"/><rect x="12" y="33" width="10" height="16" rx="4" ${W}/><rect x="42" y="33" width="10" height="16" rx="4" ${W}/><path d="M17 36v10M47 36v10" stroke="#1d2b4f" stroke-width="1.6" stroke-linecap="round"/>`},
+ {id:'tour',n:'Tour de contrôle',bg:'#0f8a8a',s:`<path ${W} d="M18 19h28l-4 10H22z"/><path d="M23 21.5h18" stroke="#0f8a8a" stroke-width="2.4" stroke-linecap="round"/><rect x="27" y="29" width="10" height="19" ${W}/><path ${WS} stroke-width="3" d="M20 49h24M32 12v7"/>`},
+ {id:'planeur',n:'Planeur',bg:'#c2417a',s:`<path ${WS} stroke-width="3" d="M7 29.5Q32 27 57 29.5"/><path ${W} d="M30.5 16c1-1.5 2-1.5 3 0l1.2 28h-5.4z"/><path ${WS} stroke-width="2.6" d="M25 45h14"/>`},
+ {id:'drone',n:'Drone',bg:'#546070',s:`<path ${WS} stroke-width="3" d="M23 23l18 18M41 23L23 41"/><rect x="27" y="27" width="10" height="10" rx="2.5" ${W}/>${[[20,20],[44,20],[20,44],[44,44]].map(([x,y])=>`<ellipse cx="${x}" cy="${y}" rx="8" ry="2.4" ${W}/>`).join('')}`},
+ {id:'montgolfiere',n:'Montgolfière',bg:'#b88a1a',s:`<path ${W} d="M32 10a15 15 0 0 1 15 15c0 8.5-9.5 13.5-11.5 18.5h-7C26.5 38.5 17 33.5 17 25a15 15 0 0 1 15-15z"/><path d="M32 10c-5 4-6 22-3.5 33.5M32 10c5 4 6 22 3.5 33.5" stroke="#b88a1a" stroke-width="1.8" fill="none"/><path ${WS} stroke-width="1.6" d="M29 43.5l.5 4M35 43.5l-.5 4"/><rect x="28" y="47.5" width="8" height="6" rx="1" ${W}/>`},
+ {id:'horizon',n:'Horizon artificiel',bg:'#3a3f8f',s:`<circle cx="32" cy="32" r="18" ${WS} stroke-width="3"/><path ${W} fill-opacity=".35" d="M14.3 35a18 18 0 0 0 35.4 0z"/><path ${WS} stroke-width="2" d="M15 35h34"/><path ${WS} stroke-width="3.2" d="M19 31.5h8l5 4 5-4h8"/><circle cx="32" cy="35.5" r="1.8" ${W}/>`},
+ {id:'manche',n:'Manche à air',bg:'#7a8b2a',s:`<path ${WS} stroke-width="3" d="M18 13v40M13 53h10"/><path d="M18.5 16.5L48 21v10.5L18.5 36z" ${W}/><path d="M26 17.6v17.2M34 18.8v14.9M41 19.9v12.8" stroke="#7a8b2a" stroke-width="3.2"/>`}
+];
+function avatar(id,size=48){const a=AV.find(x=>x.id===id)||AV[0];return `<svg class="ico-av" viewBox="0 0 64 64" width="${size}" height="${size}" aria-hidden="true"><circle cx="32" cy="32" r="32" fill="${a.bg}"/>${a.s}</svg>`}
+return{CAT,BCAT,badge,galon,GRADE_DEF,AV,avatar};
+})();
+
+const AVK='emhar-avatar';let myAv=LS.get(AVK,'avion');if(!ICONS.AV.some(a=>a.id===myAv))myAv='avion';
+const gradeIdx=n=>{const i=GRADES.findIndex(g=>g[1]===n);return i<0?0:i};
+const avOf=id=>ICONS.AV.some(a=>a.id===id)?id:'avion';
+function avatarView(back){
+  view='avatar';clearInterval(timerId);S=null;
+  app.innerHTML=`<div class="top"><button class="ghost small" id="back">← Retour</button></div>
+  <h1>Mon icône de profil</h1><p class="sub">Elle apparaît sur ta carte et dans le classement de la promo.</p>
+  <div class="avgrid">${ICONS.AV.map(a=>`<button class="avc" data-av="${a.id}" aria-pressed="${a.id===myAv}">${ICONS.avatar(a.id,64)}<span>${esc(a.n)}</span></button>`).join('')}</div>`;
+  document.getElementById('back').onclick=()=>back();
+  app.querySelectorAll('[data-av]').forEach(b=>b.onclick=()=>{myAv=b.dataset.av;LS.set(AVK,myAv);pushStats();back()});
+  window.scrollTo({top:0});
+}
 /* ---------- Récompenses : XP, grades, série de jours, objectif du jour, succès ---------- */
 const GRADES=[[0,'Élève mécano'],[300,'Mécanicien'],[800,'Mécanicien confirmé'],[1600,'Technicien'],[2800,'Technicien certifié'],[4500,'Chef d’équipe'],[7000,'Inspecteur'],[10000,'Expert maintenance']];
 const GOAL=50;
@@ -592,13 +695,13 @@ const BADGES=[
  ['emhar1','EMHAR 1 maîtrisé','Obtiens les 4 badges « Maître » de l’EMHAR 1',()=>['D','T','A','S'].every(k=>masteryPct(k)>=.8),'E1']
 ];
 function earned(p){return BADGES.filter(b=>b[3](p)).map(b=>b[0])}
-function badgeIcon(b,on){return `<span class="bdg ${on?'on':''}" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M24 3l17 7v12c0 11-7 19-17 23C14 41 7 33 7 22V10z"/></svg><b>${esc(b[4])}</b></span>`}
+function badgeIcon(b,on,size=48){return ICONS.badge(b[0],size,!on)}
 function ring(v){const r=20,c=2*Math.PI*r,f=Math.min(1,v/GOAL);return `<svg class="ring" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="${r}" stroke="var(--line)"/><circle cx="24" cy="24" r="${r}" stroke="${f>=1?'var(--ok)':'var(--D)'}" stroke-dasharray="${c*f} ${c}" transform="rotate(-90 24 24)"/></svg>`}
 function profileCard(p){
   const pct=p.next?(p.xp-p.floor)/(p.next[0]-p.floor)*100:100,got=earned(p).length;
   return `<div class="pcard">
-   <div class="pg"><span class="wings" aria-hidden="true"><svg viewBox="0 0 64 32"><path d="M32 6l4 8h-8zM2 12c10 0 18 2 26 6l-2 4C18 19 10 17 2 17zM62 12c-10 0-18 2-26 6l2 4c8-3 16-5 24-5z"/><circle cx="32" cy="20" r="6"/></svg></span>
-    <div><span class="lab">Grade</span><b>${esc(p.grade)}</b><div class="xpb"><i style="width:${pct}%"></i></div><span class="lab">${p.xp} XP${p.next?` · ${p.next[0]-p.xp} XP avant ${esc(p.next[1])}`:' · grade maximal'}</span></div></div>
+   <div class="pg"><button class="avbtn" id="avpick" aria-label="Changer mon icône de profil">${ICONS.avatar(myAv,58)}<span class="avedit" aria-hidden="true">✎</span></button>
+    <div><span class="lab">Grade</span><b>${esc(p.grade)}</b><div class="xpb"><i style="width:${pct}%"></i></div><span class="lab">${p.xp} XP${p.next?` · ${p.next[0]-p.xp} XP avant ${esc(p.next[1])}`:' · grade maximal'}</span></div>${ICONS.galon(p.gi,72)}</div>
    <div class="pstats">
     <div><span class="lab">Série</span><b>${p.streak} jour${p.streak>1?'s':''}</b></div>
     <div class="goal">${ring(p.today)}<div><span class="lab">Objectif du jour</span><b>${Math.min(p.today,GOAL)} / ${GOAL}</b></div></div>
@@ -611,10 +714,10 @@ function badgesView(){
   app.innerHTML=`<div class="top"><button class="ghost small" id="back">← Accueil</button></div>
   <h1>Succès</h1><p class="sub">${got.size} débloqué${got.size>1?'s':''} sur ${BADGES.length} · ${p.xp} XP · ${esc(p.grade)}</p>
   ${profileCard(p).replace(/<button class="ghost small" id="badges">.*?<\/button>/,'')}
-  <h2>Grades</h2><div class="grades">${GRADES.map((g,i)=>`<div class="${i<=p.gi?'gok':''}"><b>${esc(g[1])}</b><span>${g[0]} XP</span></div>`).join('')}</div>
+  <h2>Grades</h2><div class="grades">${GRADES.map((g,i)=>`<div class="${i<=p.gi?'gok':''}">${ICONS.galon(i,84)}<b>${esc(g[1])}</b><span>${g[0]} XP</span></div>`).join('')}</div>
   <p class="small-note">Bonne réponse : 10 XP · question ratée avant puis réussie : +5 XP · test blanc terminé : 50 XP, ou 100 XP avec 12/20 ou plus.</p>
   <h2>Badges</h2><div class="badges">${BADGES.map(b=>`<div class="badge-c ${got.has(b[0])?'got':''}">${badgeIcon(b,got.has(b[0]))}<div><b>${esc(b[1])}</b><span>${esc(b[2])}</span></div></div>`).join('')}</div>`;
-  document.getElementById('back').onclick=setup;window.scrollTo({top:0});
+  document.getElementById('back').onclick=setup;{const a=document.getElementById('avpick');if(a)a.onclick=()=>avatarView(badgesView)}window.scrollTo({top:0});
 }
 
 /* ---------- Classement de la promo (Supabase) ---------- */
@@ -641,7 +744,7 @@ async function authed(path,opt={}){const s=await session();return sbFetch(path,{
 function myStats(){
   const p=profile(),ex=P.history.filter(h=>h.mode==='exam'&&h.n>=5).map(note);
   const courses={};Object.keys(COURSES).forEach(k=>courses[k]=Math.round(progressPct(k)*100));
-  return{xp:p.xp,grade:p.grade,badges:earned(p),best_exam:ex.length?Math.max(...ex):null,sessions:p.sessions,answered:p.answered,streak:p.streak,best_streak:p.bestStreak,courses,updated_at:new Date().toISOString()};
+  return{avatar:myAv,xp:p.xp,grade:p.grade,badges:earned(p),best_exam:ex.length?Math.max(...ex):null,sessions:p.sessions,answered:p.answered,streak:p.streak,best_streak:p.bestStreak,courses,updated_at:new Date().toISOString()};
 }
 const pid=()=>me&&(me.pid||(sess&&sess.uid));
 async function rpc(fn,args){const r=await authed('/rest/v1/rpc/'+fn,{method:'POST',body:JSON.stringify(args)});if(!r.ok)throw new Error('rpc');return r.json()}
@@ -681,7 +784,7 @@ let pushing=null;
 function pushStats(){if(!me)return;if(pushing)return;pushing=Promise.all([pushStatsNow(),pushHistory()]).finally(()=>{pushing=null})}
 async function syncOnStart(){if(!me)return;const n=await pullHistory();if(n&&view==='home')setup(true);pushStats()}
 async function loadBoard(){
-  const r=await sbFetch('/rest/v1/players?select=id,pseudo,xp,grade,badges,best_exam,sessions,answered,streak,best_streak,courses,updated_at&order=xp.desc&limit=200');
+  const r=await sbFetch('/rest/v1/players?select=id,pseudo,avatar,xp,grade,badges,best_exam,sessions,answered,streak,best_streak,courses,updated_at&order=xp.desc&limit=200');
   if(!r.ok)throw new Error('board');lbCache=await r.json();return lbCache;
 }
 const validPseudo=s=>/^[\p{L}\p{N} _.\-]{2,20}$/u.test(s);
@@ -740,9 +843,9 @@ async function leaderboard(){
   ${me?(me.pw?'':`<p class="why mine" style="margin-top:12px"><b>Ajoute un mot de passe à ton profil</b> pour le retrouver sur ton téléphone ou un autre appareil, dans « Mon profil » en bas de la page.</p>`):pseudoForm('')}
   <div class="quick" style="margin:14px 0">${Object.entries(SORTS).map(([k,v])=>`<button class="chip test" data-sort="${k}" aria-pressed="${lbSort===k}">${v[0]}</button>`).join('')}</div>
   ${rows.length?`<div class="lb">${rows.map((r,i)=>`<button class="lbr ${r.id===mine?'me':''}" data-p="${esc(r.id)}">
-    <span class="rk ${i<3?'r'+(i+1):''}">${i+1}</span>
+    <span class="rk ${i<3?'r'+(i+1):''}">${i+1}</span>${ICONS.avatar(avOf(r.id===mine?myAv:r.avatar),40)}
     <span class="who"><b>${esc(r.pseudo)}${r.id===mine?' (toi)':''}</b><small>${esc(r.grade||'')} · ${(r.badges||[]).length} badge${(r.badges||[]).length>1?'s':''}</small></span>
-    <span class="val">${lbSort==='xp'?`${r.xp}<small> XP</small>`:lbSort==='best_exam'?(r.best_exam==null?'—':fr(+r.best_exam)+'<small> /20</small>'):`${r.best_streak||0}<small> j</small>`}</span></button>`).join('')}</div>`:'<p class="empty neutral">Personne n’a encore rejoint le classement. Sois le premier !</p>'}
+    ${ICONS.galon(gradeIdx(r.grade),36)}<span class="val">${lbSort==='xp'?`${r.xp}<small> XP</small>`:lbSort==='best_exam'?(r.best_exam==null?'—':fr(+r.best_exam)+'<small> /20</small>'):`${r.best_streak||0}<small> j</small>`}</span></button>`).join('')}</div>`:'<p class="empty neutral">Personne n’a encore rejoint le classement. Sois le premier !</p>'}
   ${me?`<details class="pset" ${me.pw?'':'open'}><summary>Mon profil</summary>${pwForm()}${pseudoForm(me.pseudo)}<button class="ghost" id="leave" style="margin-top:10px">Supprimer mon profil du classement</button> <button class="ghost" id="logout" style="margin-top:10px">Déconnecter cet appareil</button></details>`:''}`;
   const on=(id,f)=>{const e=document.getElementById(id);if(e)e.onclick=f};
   on('back',setup);bindPseudo(me?me.pseudo:'');bindPw();
@@ -757,7 +860,7 @@ function playerView(r,rows){
   if(!r)return;view='player';
   const rank=rows.findIndex(x=>x.id===r.id)+1,got=new Set(r.badges||[]);
   app.innerHTML=`<div class="top"><button class="ghost small" id="back">← Classement</button></div>
-  <h1>${esc(r.pseudo)}</h1><p class="sub">${rank}${rank===1?'er':'e'} du classement · ${esc(r.grade||'')}</p>
+  <div class="phead">${ICONS.avatar(avOf(r.avatar),72)}<div><h1>${esc(r.pseudo)}</h1><p class="sub">${rank}${rank===1?'er':'e'} du classement · ${esc(r.grade||'')}</p></div>${ICONS.galon(gradeIdx(r.grade),80)}</div>
   <div class="tiles">
     <div><span>XP</span><b>${r.xp}</b></div>
     <div><span>Meilleur test blanc</span><b>${r.best_exam==null?'—':fr(+r.best_exam)+'<small> / 20</small>'}</b></div>
@@ -837,7 +940,7 @@ function setup(keep){const y0=window.scrollY;
     <div class="themes" role="group" aria-label="Thème"><span class="lab">Thème</span>${[['auto','Auto'],['light','Clair'],['dark','Sombre']].map(([v,l])=>`<button class="chip test" data-th="${v}" aria-pressed="${theme===v}">${l}</button>`).join('')}</div>
   </div>`;
   const on=(id,f)=>{const e=document.getElementById(id);if(e)e.onclick=f};
-  on('prog',progress);on('badges',badgesView);on('board',leaderboard);
+  on('prog',progress);on('badges',badgesView);on('board',leaderboard);on('avpick',()=>avatarView(setup));
   app.querySelectorAll('[data-test]').forEach(b=>b.onclick=()=>{cfg.test=b.dataset.test;save();setup(true)});
   app.querySelectorAll('[data-inc],[data-dec]').forEach(b=>b.onclick=()=>{const k=b.dataset.inc||b.dataset.dec;cfg.n[k]=Math.max(0,Math.min(total(k),cfg.n[k]+(b.dataset.inc?1:-1)));save();setup(true)});
   app.querySelectorAll('[data-num]').forEach(inp=>{
