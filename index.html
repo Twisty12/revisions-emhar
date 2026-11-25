@@ -197,6 +197,15 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .fl{display:block;font-weight:600;margin:12px 0 4px}
 .fi{width:100%;min-height:48px;font:inherit;font-size:16px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 #pf .go{margin-top:14px}
+.step input.num{width:58px;height:44px;text-align:center;font:inherit;font-weight:800;font-size:20px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);-moz-appearance:textfield;appearance:textfield;padding:0}
+.step input.num::-webkit-inner-spin-button,.step input.num::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.step input.num:focus{outline:3px solid var(--D);outline-offset:1px}
+.foot{display:grid;gap:14px;margin-top:36px;padding-top:24px;border-top:1px solid var(--line)}
+.fbk{display:flex;gap:14px;align-items:center;text-align:left;width:100%;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--card);min-height:64px}
+.fbk b{display:block}.fbk small{color:var(--mute);font-size:14px}
+.fbi{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--bg);flex:none}
+.themes{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.themes .lab{margin-right:4px}
+.fta{min-height:140px;padding:12px;line-height:1.5;resize:vertical}
 @media(pointer:coarse){.hint{display:none}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -763,6 +772,40 @@ function playerView(r,rows){
   document.getElementById('back').onclick=leaderboard;window.scrollTo({top:0});
 }
 
+/* ---------- Thème clair / sombre ---------- */
+let theme=LS.get('emhar-theme','auto');
+function setTheme(v){theme=['light','dark'].includes(v)?v:'auto';LS.set('emhar-theme',theme);if(theme==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.dataset.theme=theme}
+setTheme(theme);
+
+/* ---------- Boîte à idées ---------- */
+let fbKind='idee',fbLast=0;
+function feedbackView(){
+  view='feedback';clearInterval(timerId);S=null;
+  app.innerHTML=`<div class="top"><button class="ghost small" id="back">← Accueil</button></div>
+  <h1>Une idée ou un bug ?</h1><p class="sub">Ton message arrive directement à l'équipe qui fait l'outil. Il n'est pas visible par la promo.</p>
+  <form id="fbf" class="pform" style="margin-top:0">
+    <span class="fl">Type</span>
+    <div class="tabs2">${[['idee','Amélioration'],['bug','Bug'],['autre','Autre']].map(([v,l])=>`<button type="button" class="chip test" data-k="${v}" aria-pressed="${fbKind===v}">${l}</button>`).join('')}</div>
+    <label class="fl" for="fbm">Message</label>
+    <textarea id="fbm" class="fi fta" rows="6" maxlength="1500" placeholder="${fbKind==='bug'?'Ce qui s\u2019est passé, sur quel écran, et sur quel appareil (téléphone, PC)':'Décris ton idée'}"></textarea>
+    <p class="small-note" id="fbc">0 / 1500</p>
+    <button class="go" type="submit">Envoyer</button>
+    <p id="fbmsg" class="small-note" role="status"></p>
+  </form>`;
+  const on=(id,f)=>{const e=document.getElementById(id);if(e)e.onclick=f};on('back',setup);
+  const ta=document.getElementById('fbm'),msg=document.getElementById('fbmsg');
+  app.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{fbKind=b.dataset.k;const v=ta.value;feedbackView();document.getElementById('fbm').value=v});
+  ta.oninput=()=>{document.getElementById('fbc').textContent=ta.value.length+' / 1500';msg.textContent=''};
+  document.getElementById('fbf').onsubmit=async e=>{e.preventDefault();const m=ta.value.trim();
+    if(m.length<5){msg.textContent='Écris au moins quelques mots.';return}
+    if(Date.now()-fbLast<30000){msg.textContent='Attends quelques secondes avant d\u2019envoyer un autre message.';return}
+    msg.textContent='Envoi…';
+    try{await session();const r=await authed('/rest/v1/feedback',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({kind:fbKind,message:m,pseudo:me?me.pseudo:null,context:(navigator.userAgent.includes('Mobi')?'téléphone':'ordinateur')+' · '+(document.documentElement.dataset.theme||'auto')})});
+      if(r.ok){fbLast=Date.now();ta.value='';document.getElementById('fbc').textContent='0 / 1500';msg.textContent='Merci, ton message est envoyé.'}else msg.textContent='Envoi impossible pour le moment. Réessaie plus tard.'}
+    catch(err){msg.textContent='Pas de connexion internet : ton message n\u2019a pas été envoyé.'}};
+  window.scrollTo({top:0});
+}
+
 /* ---------- Écran d'accueil ---------- */
 function setup(keep){const y0=window.scrollY;
   view='home';clearInterval(timerId);S=null;
@@ -785,14 +828,24 @@ function setup(keep){const y0=window.scrollY;
   <h2>Questions par cours</h2>
   ${K.map(k=>`<div class="course"><span class="dot" style="background:${COURSES[k].c}"></span>
     <div><b>${COURSES[k].n}</b><small>${COURSES[k].ref} · ${total(k)} questions disponibles</small></div>
-    <div class="step"><button data-dec="${k}" aria-label="Moins de questions ${COURSES[k].n}">−</button><output>${cfg.n[k]}</output><button data-inc="${k}" aria-label="Plus de questions ${COURSES[k].n}">+</button></div></div>`).join('')}
+    <div class="step"><button data-dec="${k}" aria-label="Moins de questions ${COURSES[k].n}">−</button><input class="num" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${total(k)}" value="${cfg.n[k]}" data-num="${k}" aria-label="Nombre de questions ${COURSES[k].n}, de 0 à ${total(k)}"><button data-inc="${k}" aria-label="Plus de questions ${COURSES[k].n}">+</button></div></div>`).join('')}
   <div class="quick"><button class="chip" data-all="max">Tout prendre</button><button class="chip" data-all="5">5 par cours</button><button class="chip" data-all="0">Tout vider</button></div>
   <button class="go" id="start" ${sum?'':'disabled'}>Commencer ${TESTS[cfg.test].n} · ${sum} question${sum>1?'s':''}</button>
-  <p class="summary">${sum?`Temps global : ${mmss(sum*PER_Q)} (${sum} × 75 s)`:'Choisis au moins une question'}</p>`;
+  <p class="summary">${sum?`Temps global : ${mmss(sum*PER_Q)} (${sum} × 75 s)`:'Choisis au moins une question'}</p>
+  <div class="foot">
+    <button class="fbk" id="fbk"><span class="fbi" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg></span><span><b>Une idée ou un bug ?</b><small>Propose une amélioration ou signale un problème</small></span></button>
+    <div class="themes" role="group" aria-label="Thème"><span class="lab">Thème</span>${[['auto','Auto'],['light','Clair'],['dark','Sombre']].map(([v,l])=>`<button class="chip test" data-th="${v}" aria-pressed="${theme===v}">${l}</button>`).join('')}</div>
+  </div>`;
   const on=(id,f)=>{const e=document.getElementById(id);if(e)e.onclick=f};
   on('prog',progress);on('badges',badgesView);on('board',leaderboard);
   app.querySelectorAll('[data-test]').forEach(b=>b.onclick=()=>{cfg.test=b.dataset.test;save();setup(true)});
   app.querySelectorAll('[data-inc],[data-dec]').forEach(b=>b.onclick=()=>{const k=b.dataset.inc||b.dataset.dec;cfg.n[k]=Math.max(0,Math.min(total(k),cfg.n[k]+(b.dataset.inc?1:-1)));save();setup(true)});
+  app.querySelectorAll('[data-num]').forEach(inp=>{
+    inp.onfocus=()=>{try{inp.select()}catch(e){}};
+    inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();inp.blur()}};
+    inp.onchange=()=>{const k=inp.dataset.num,v=parseInt(inp.value,10);cfg.n[k]=isNaN(v)?0:Math.max(0,Math.min(total(k),v));save();setup(true)}});
+  on('fbk',feedbackView);
+  app.querySelectorAll('[data-th]').forEach(b=>b.onclick=()=>{setTheme(b.dataset.th);setup(true)});
   app.querySelectorAll('[data-all]').forEach(b=>b.onclick=()=>{K.forEach(k=>cfg.n[k]=b.dataset.all==='max'?total(k):Math.min(total(k),+b.dataset.all));save();setup(true)});
   app.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{cfg.mode=b.dataset.mode;save();setup(true)});
   const ch=document.getElementById('chrono');if(ch)ch.onchange=()=>{cfg.chrono=ch.checked;save()};
