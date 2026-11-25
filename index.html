@@ -860,7 +860,7 @@ function badgeModal(b,on,t){
   m.onclick=e=>{if(e.target===m)close()};m.querySelector('.mclose').onclick=close;document.addEventListener('keydown',esck);
   document.body.appendChild(m);m.querySelector('.mclose').focus();
   const rate=rows=>{const el=document.getElementById('mrate');if(!el||!rows||!rows.length)return;const k=rows.filter(r=>(r.badges||[]).includes(b[0])).length;
-    el.innerHTML=`<span class="rbar"><i style="width:${k/rows.length*100}%"></i></span>Obtenu par <b>${Math.round(k/rows.length*100)} %</b> des joueurs (${k} sur ${rows.length})`};
+    el.innerHTML=`<span class="rbar"><i style="width:${k/rows.length*100}%"></i></span>Obtenu par <b>${Math.round(k/rows.length*100)} %</b> des joueurs`};
   if(lbCache)rate(lbCache);else loadBoard().then(rate).catch(()=>{});
 }
 const btile=(b,on,t)=>`<button class="btile ${on?'got':''}" data-b="${b[0]}">${badgeIcon(b,on,84)}<b>${esc(b[1])}</b><small>${on?'Obtenu':'À débloquer'}</small></button>`;
