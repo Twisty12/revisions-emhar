@@ -216,6 +216,13 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .ico-av{flex:none;display:block}.ico-galon{flex:none;display:block}
 .phead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;margin-bottom:8px}.phead h1{margin:0}.phead .sub{margin:4px 0 0}
 .grades div{display:grid;justify-items:center;text-align:center;gap:4px}
+.goodbox{background:var(--okbg);border:1px solid var(--ok);border-radius:10px;padding:10px 12px;margin:8px 0}
+.goodbox b{display:block;margin-top:4px}
+.why .you.okt,.goodbox .you{display:inline-block;font-size:12px;font-weight:800;color:#fff;background:var(--ok);border-radius:8px;padding:1px 8px}
+.step .mx{width:auto;padding:0 10px;font-size:14px;font-weight:700}
+.step .mx[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.step{flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:520px){.course{grid-template-columns:8px minmax(0,1fr)}.course .step{grid-column:2;justify-content:flex-start}.course .dot{grid-row:span 2}}
 @media(pointer:coarse){.hint{display:none}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -749,12 +756,12 @@ function myStats(){
 const pid=()=>me&&(me.pid||(sess&&sess.uid));
 async function rpc(fn,args){const r=await authed('/rest/v1/rpc/'+fn,{method:'POST',body:JSON.stringify(args)});if(!r.ok)throw new Error('rpc');return r.json()}
 async function setPassword(pw){return rpc('set_profile_password',{pw})}
-async function createProfile(pseudo,pw){
+async function createProfile(pseudo,pw,promo){
   const s=await session();
-  const r=await authed('/rest/v1/players',{method:'POST',body:JSON.stringify({pseudo,...myStats()})});
+  const r=await authed('/rest/v1/players',{method:'POST',body:JSON.stringify({pseudo,promo,...myStats()})});
   if(r.status===409)return 'pris';
   if(!r.ok)return 'erreur';
-  me={pseudo,pid:s.uid,pw:0};LS.set('emhar-me',me);
+  me={pseudo,pid:s.uid,pw:0,promo};LS.set('emhar-me',me);
   if(pw&&await setPassword(pw)==='ok'){me.pw=1;LS.set('emhar-me',me)}
   await pushHistory();return 'ok';
 }
@@ -784,7 +791,7 @@ let pushing=null;
 function pushStats(){if(!me)return;if(pushing)return;pushing=Promise.all([pushStatsNow(),pushHistory()]).finally(()=>{pushing=null})}
 async function syncOnStart(){if(!me)return;const n=await pullHistory();if(n&&view==='home')setup(true);pushStats()}
 async function loadBoard(){
-  const r=await sbFetch('/rest/v1/players?select=id,pseudo,avatar,xp,grade,badges,best_exam,sessions,answered,streak,best_streak,courses,updated_at&order=xp.desc&limit=200');
+  const r=await sbFetch('/rest/v1/players?select=id,pseudo,promo,avatar,xp,grade,badges,best_exam,sessions,answered,streak,best_streak,courses,updated_at&order=xp.desc&limit=200');
   if(!r.ok)throw new Error('board');lbCache=await r.json();return lbCache;
 }
 const validPseudo=s=>/^[\p{L}\p{N} _.\-]{2,20}$/u.test(s);
@@ -796,26 +803,30 @@ function pseudoForm(cur){
   <form id="pf" data-mode="new">
     <p class="small-note" id="pintro">Choisis un pseudo (visible par toute la promo) et un mot de passe pour retrouver ton profil sur tes autres appareils.</p>
     <label class="fl" for="pin">Pseudo</label><input id="pin" class="fi" maxlength="20" autocomplete="username" placeholder="Ex. : Twisty12">
+    <div id="promobox"><label class="fl" for="ppromo">Promo (chiffres uniquement)</label><input id="ppromo" class="fi" inputmode="numeric" pattern="[0-9]*" maxlength="5" autocomplete="off" placeholder="Ex. : 2643"></div>
     <label class="fl" for="ppw">Mot de passe (6 caractères minimum)</label><input id="ppw" class="fi" type="password" maxlength="72" autocomplete="new-password">
     <button class="go" type="submit" id="psub">Rejoindre le classement</button>
     <p id="pmsg" class="small-note" role="status"></p>
   </form></div>`}
 function bindPseudo(cur){
   const f=document.getElementById('pf');if(!f)return;
+  const pr=document.getElementById('ppromo');if(pr)pr.oninput=()=>{pr.value=pr.value.replace(/[^0-9]/g,'').slice(0,5)};
   app.querySelectorAll('[data-pt]').forEach(b=>b.onclick=()=>{const l=b.dataset.pt==='login';f.dataset.mode=b.dataset.pt;
     app.querySelectorAll('[data-pt]').forEach(x=>x.setAttribute('aria-pressed',x===b));
     document.getElementById('pintro').textContent=l?'Entre le pseudo et le mot de passe de ton profil pour le retrouver sur cet appareil, avec ta progression.':'Choisis un pseudo (visible par toute la promo) et un mot de passe pour retrouver ton profil sur tes autres appareils.';
-    document.getElementById('ppw').autocomplete=l?'current-password':'new-password';
+    document.getElementById('ppw').autocomplete=l?'current-password':'new-password';document.getElementById('promobox').hidden=l;
     document.getElementById('psub').textContent=l?'Me connecter':'Rejoindre le classement';document.getElementById('pmsg').textContent=''});
   f.onsubmit=async e=>{e.preventDefault();const v=document.getElementById('pin').value.trim(),m=document.getElementById('pmsg'),pwEl=document.getElementById('ppw'),pw=pwEl?pwEl.value:'';
     const mode=cur?'rename':f.dataset.mode;
     if(mode!=='login'&&!validPseudo(v)){m.textContent='Pseudo invalide : 2 à 20 caractères (lettres, chiffres, espace, tiret, point).';return}
+    const promo=(document.getElementById('ppromo')||{}).value||'';
+    if(mode==='new'&&!/^[0-9]{3,5}$/.test(promo.trim())){m.textContent='Indique ta promo en chiffres (3 à 5 chiffres, par exemple 2643).';return}
     if(mode==='new'&&pw.length<6){m.textContent='Le mot de passe doit faire au moins 6 caractères.';return}
     if(mode==='login'&&(!v||!pw)){m.textContent='Entre ton pseudo et ton mot de passe.';return}
     m.textContent=mode==='login'?'Connexion…':'Enregistrement…';
-    try{const r=mode==='rename'?await renameProfile(v):mode==='new'?await createProfile(v,pw):await loginProfile(v,pw);
+    try{const r=mode==='rename'?await renameProfile(v):mode==='new'?await createProfile(v,pw,promo.trim()):await loginProfile(v,pw);
       const msg={pris:'Ce pseudo est déjà pris. Si c’est le tien, choisis « J’ai déjà un profil ».',invalid:'Pseudo ou mot de passe incorrect. Un profil sans mot de passe ne peut pas être retrouvé : ajoutes-en un depuis l’appareil où il a été créé.',locked:'Trop d’essais. Réessaie dans 15 minutes.',already:'Cet appareil a déjà son propre profil. Déconnecte-le d’abord (Mon profil, en bas du classement).'};
-      if(r==='ok')leaderboard();else m.textContent=msg[r]||'Impossible pour le moment. Réessaie plus tard.'}
+      if(r==='ok'){if(gateNext){const g=gateNext;gateNext=null;g()}else leaderboard()}else m.textContent=msg[r]||'Impossible pour le moment. Réessaie plus tard.'}
     catch(err){m.textContent=err.message==='session'?'Ta session a expiré sur cet appareil.':'Pas de connexion au classement. Vérifie ta connexion internet.'}};
 }
 function pwForm(){return `<form id="pwf" class="pform"><label class="fl" for="npw"><b>${me&&me.pw?'Changer mon mot de passe':'Ajouter un mot de passe'}</b></label>
@@ -825,6 +836,7 @@ function bindPw(){const f=document.getElementById('pwf');if(!f)return;f.onsubmit
   if(v.length<6){m.textContent='6 caractères minimum.';return}m.textContent='Enregistrement…';
   try{const r=await setPassword(v);if(r==='ok'){me.pw=1;LS.set('emhar-me',me);m.textContent='Mot de passe enregistré. Sur ton autre appareil : Classement → « J’ai déjà un profil ».';document.getElementById('npw').value=''}else m.textContent='Impossible pour le moment.'}
   catch(err){m.textContent='Pas de connexion au classement.'}}}
+let lbPromo=(LS.get('emhar-me',null)||{}).promo||'2643',gateNext=null;
 const SORTS={xp:['XP','xp'],best_exam:['Meilleur test blanc','best_exam'],best_streak:['Meilleure série','best_streak']};
 async function leaderboard(){
   view='board';clearInterval(timerId);S=null;
@@ -836,15 +848,22 @@ async function leaderboard(){
     <p class="empty neutral">Le classement n'est pas joignable. Vérifie ta connexion internet. Dans l'aperçu sur claude.ai, le classement est bloqué : ouvre le fichier HTML téléchargé.</p>`;document.getElementById('back').onclick=setup;return}
   if(view!=='board')return;
   const key=SORTS[lbSort][1];
-  rows=rows.slice().sort((a,b)=>(b[key]??-1)-(a[key]??-1)||b.xp-a.xp);
   const mine=me?pid():null;
+  if(me){const mr=rows.find(r=>r.id===mine);if(mr&&mr.promo&&me.promo!==mr.promo){me.promo=mr.promo;LS.set('emhar-me',me)}}
+  const promos=[...new Set(rows.map(r=>r.promo).filter(Boolean))].sort();
+  if(lbPromo!=='all'&&!promos.includes(lbPromo))lbPromo=me&&me.promo&&promos.includes(me.promo)?me.promo:'all';
+  const total=rows.length;
+  if(lbPromo!=='all')rows=rows.filter(r=>r.promo===lbPromo);
+  rows=rows.slice().sort((a,b)=>(b[key]??-1)-(a[key]??-1)||b.xp-a.xp);
   app.innerHTML=`<div class="top"><button class="ghost small" id="back">← Accueil</button></div>
-  <h1>Classement de la promo</h1><p class="sub">${rows.length} participant${rows.length>1?'s':''}${me?` · tu joues sous le pseudo <b>${esc(me.pseudo)}</b>`:''}</p>
+  <h1>Classement${lbPromo!=='all'?' de la promo '+esc(lbPromo):''}</h1><p class="sub">${rows.length} participant${rows.length>1?'s':''}${me?` · tu joues sous le pseudo <b>${esc(me.pseudo)}</b>${me.promo?` (promo ${esc(me.promo)})`:''}`:''}</p>
+  ${gateNext&&!me?`<p class="why mine" style="margin-top:12px"><b>Crée ton profil pour commencer.</b> Il faut un profil au classement pour lancer un entraînement ou un test blanc. Tu peux aussi te connecter à un profil existant.</p>`:''}
   ${me?(me.pw?'':`<p class="why mine" style="margin-top:12px"><b>Ajoute un mot de passe à ton profil</b> pour le retrouver sur ton téléphone ou un autre appareil, dans « Mon profil » en bas de la page.</p>`):pseudoForm('')}
+  ${promos.length>1||lbPromo!=='all'?`<div class="quick" style="margin:14px 0 0">${promos.map(pr=>`<button class="chip test" data-promo="${esc(pr)}" aria-pressed="${lbPromo===pr}">Promo ${esc(pr)}</button>`).join('')}<button class="chip test" data-promo="all" aria-pressed="${lbPromo==='all'}">Toutes (${total})</button></div>`:''}
   <div class="quick" style="margin:14px 0">${Object.entries(SORTS).map(([k,v])=>`<button class="chip test" data-sort="${k}" aria-pressed="${lbSort===k}">${v[0]}</button>`).join('')}</div>
   ${rows.length?`<div class="lb">${rows.map((r,i)=>`<button class="lbr ${r.id===mine?'me':''}" data-p="${esc(r.id)}">
     <span class="rk ${i<3?'r'+(i+1):''}">${i+1}</span>${ICONS.avatar(avOf(r.id===mine?myAv:r.avatar),40)}
-    <span class="who"><b>${esc(r.pseudo)}${r.id===mine?' (toi)':''}</b><small>${esc(r.grade||'')} · ${(r.badges||[]).length} badge${(r.badges||[]).length>1?'s':''}</small></span>
+    <span class="who"><b>${esc(r.pseudo)}${r.id===mine?' (toi)':''}</b><small>${lbPromo==='all'&&r.promo?'Promo '+esc(r.promo)+' · ':''}${esc(r.grade||'')} · ${(r.badges||[]).length} badge${(r.badges||[]).length>1?'s':''}</small></span>
     ${ICONS.galon(gradeIdx(r.grade),36)}<span class="val">${lbSort==='xp'?`${r.xp}<small> XP</small>`:lbSort==='best_exam'?(r.best_exam==null?'—':fr(+r.best_exam)+'<small> /20</small>'):`${r.best_streak||0}<small> j</small>`}</span></button>`).join('')}</div>`:'<p class="empty neutral">Personne n’a encore rejoint le classement. Sois le premier !</p>'}
   ${me?`<details class="pset" ${me.pw?'':'open'}><summary>Mon profil</summary>${pwForm()}${pseudoForm(me.pseudo)}<button class="ghost" id="leave" style="margin-top:10px">Supprimer mon profil du classement</button> <button class="ghost" id="logout" style="margin-top:10px">Déconnecter cet appareil</button></details>`:''}`;
   const on=(id,f)=>{const e=document.getElementById(id);if(e)e.onclick=f};
@@ -852,6 +871,7 @@ async function leaderboard(){
   on('logout',()=>{const b=document.getElementById('logout');if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent=me.pw?'Confirmer (tu pourras te reconnecter avec ton mot de passe)':'Confirmer : sans mot de passe, ce profil sera perdu';return}
     me=null;LS.set('emhar-me',null);sess=null;LS.set('emhar-sb',null);leaderboard()});
   app.querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{lbSort=b.dataset.sort;leaderboard()});
+  app.querySelectorAll('[data-promo]').forEach(b=>b.onclick=()=>{lbPromo=b.dataset.promo;leaderboard()});
   app.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>playerView(rows.find(r=>r.id===b.dataset.p),rows));
   on('leave',async()=>{const b=document.getElementById('leave');if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent='Confirmer : supprimer mon profil du classement';return}
     try{const r=await authed('/rest/v1/players?id=eq.'+pid(),{method:'DELETE'});if(r.ok){me=null;LS.set('emhar-me',null);leaderboard()}}catch(e){}});
@@ -860,7 +880,7 @@ function playerView(r,rows){
   if(!r)return;view='player';
   const rank=rows.findIndex(x=>x.id===r.id)+1,got=new Set(r.badges||[]);
   app.innerHTML=`<div class="top"><button class="ghost small" id="back">← Classement</button></div>
-  <div class="phead">${ICONS.avatar(avOf(r.avatar),72)}<div><h1>${esc(r.pseudo)}</h1><p class="sub">${rank}${rank===1?'er':'e'} du classement · ${esc(r.grade||'')}</p></div>${ICONS.galon(gradeIdx(r.grade),80)}</div>
+  <div class="phead">${ICONS.avatar(avOf(r.avatar),72)}<div><h1>${esc(r.pseudo)}</h1><p class="sub">${rank}${rank===1?'er':'e'} du classement${r.promo?' · promo '+esc(r.promo):''} · ${esc(r.grade||'')}</p></div>${ICONS.galon(gradeIdx(r.grade),80)}</div>
   <div class="tiles">
     <div><span>XP</span><b>${r.xp}</b></div>
     <div><span>Meilleur test blanc</span><b>${r.best_exam==null?'—':fr(+r.best_exam)+'<small> / 20</small>'}</b></div>
@@ -931,7 +951,7 @@ function setup(keep){const y0=window.scrollY;
   <h2>Questions par cours</h2>
   ${K.map(k=>`<div class="course"><span class="dot" style="background:${COURSES[k].c}"></span>
     <div><b>${COURSES[k].n}</b><small>${COURSES[k].ref} · ${total(k)} questions disponibles</small></div>
-    <div class="step"><button data-dec="${k}" aria-label="Moins de questions ${COURSES[k].n}">−</button><input class="num" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${total(k)}" value="${cfg.n[k]}" data-num="${k}" aria-label="Nombre de questions ${COURSES[k].n}, de 0 à ${total(k)}"><button data-inc="${k}" aria-label="Plus de questions ${COURSES[k].n}">+</button></div></div>`).join('')}
+    <div class="step"><button data-dec="${k}" aria-label="Moins de questions ${COURSES[k].n}">−</button><input class="num" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${total(k)}" value="${cfg.n[k]}" data-num="${k}" aria-label="Nombre de questions ${COURSES[k].n}, de 0 à ${total(k)}"><button data-inc="${k}" aria-label="Plus de questions ${COURSES[k].n}">+</button><button class="mx" data-max="${k}" aria-pressed="${cfg.n[k]===total(k)}" aria-label="Toutes les questions ${COURSES[k].n}">Max</button></div></div>`).join('')}
   <div class="quick"><button class="chip" data-all="max">Tout prendre</button><button class="chip" data-all="5">5 par cours</button><button class="chip" data-all="0">Tout vider</button></div>
   <button class="go" id="start" ${sum?'':'disabled'}>Commencer ${TESTS[cfg.test].n} · ${sum} question${sum>1?'s':''}</button>
   <p class="summary">${sum?`Temps global : ${mmss(sum*PER_Q)} (${sum} × 75 s)`:'Choisis au moins une question'}</p>
@@ -943,6 +963,7 @@ function setup(keep){const y0=window.scrollY;
   on('prog',progress);on('badges',badgesView);on('board',leaderboard);on('avpick',()=>avatarView(setup));
   app.querySelectorAll('[data-test]').forEach(b=>b.onclick=()=>{cfg.test=b.dataset.test;save();setup(true)});
   app.querySelectorAll('[data-inc],[data-dec]').forEach(b=>b.onclick=()=>{const k=b.dataset.inc||b.dataset.dec;cfg.n[k]=Math.max(0,Math.min(total(k),cfg.n[k]+(b.dataset.inc?1:-1)));save();setup(true)});
+  app.querySelectorAll('[data-max]').forEach(b=>b.onclick=()=>{const k=b.dataset.max;cfg.n[k]=total(k);save();setup(true)});
   app.querySelectorAll('[data-num]').forEach(inp=>{
     inp.onfocus=()=>{try{inp.select()}catch(e){}};
     inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();inp.blur()}};
@@ -958,6 +979,7 @@ function setup(keep){const y0=window.scrollY;
 
 /* ---------- Session ---------- */
 function start(qs,kind){
+  if(!me){gateNext=()=>start(qs,kind);leaderboard();return}
   clearInterval(timerId);view='quiz';
   S={qs:qs.map(q=>({q,order:shuffle([0,1,2])})),i:0,ans:[],kind:kind||'libre',exam:cfg.mode==='exam',timed:cfg.mode==='exam'||cfg.chrono,t0:Date.now(),budget:qs.length*PER_Q,left:qs.length*PER_Q,timeout:false};
   if(S.timed)timerId=setInterval(tick,1000);
@@ -1015,7 +1037,7 @@ function correction(q,chosen,box,order){
   const ok=chosen===q.a,C=COURSES[q.c];
   const letter=oi=>order?'ABC'[order.indexOf(oi)]+' · ':'';
   const head=ok?`<h3 class="ok">✓ Bonne réponse</h3>`:`<h3 class="nok">✗ ${chosen<0?'Temps écoulé, pas de réponse':'Mauvaise réponse'}</h3>`;
-  const good=`<p><b class="ok">${ok?'Ta réponse est la bonne':'La bonne réponse'} :</b> ${letter(q.a)}${esc(q.o[q.a])}</p>`;
+  const good=`<p class="goodbox"><span class="you okt">${ok?'Ta réponse : bonne':'La bonne réponse'}</span><b>${letter(q.a)}${esc(q.o[q.a])}</b></p>`;
   const others=[0,1,2].filter(i=>i!==q.a).sort((a,b)=>(b===chosen)-(a===chosen));
   const whyNot=`<div class="whynot"><b>Pourquoi pas les autres réponses :</b>${others.map(i=>`<p class="why${i===chosen?' mine':''}">${i===chosen?'<span class="you">Ta réponse</span>':''}<b>${letter(i)}${esc(q.o[i])}</b><br>${esc(q.w[i])}</p>`).join('')}</div>`;
   const inner=`${box?head:''}${good}<p><b>Explication :</b> ${esc(q.x)}</p>${figHTML(q)}${whyNot}<p class="keep">À retenir : ${esc(q.r)}</p><p class="ref">${C.ref} · ${C.n} · page ${q.p}</p>`;
