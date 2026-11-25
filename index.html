@@ -99,6 +99,7 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .rvn{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--bg);font-weight:700;font-size:14px}
 .rvi.miss{border-style:dashed}.rvi.miss .rvn{background:none;color:var(--ko);border:2px solid var(--ko)}
 .rvt{display:grid;gap:2px;min-width:0}.rvq{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rva{font-size:14px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rvi.miss .rva{color:var(--ko)}
+.exn{font-weight:800;font-size:20px;min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
 .hint{color:var(--mute);font-size:13px;text-align:center;margin-top:14px}
 /* results */
 .score{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 28px;padding:24px;border-radius:18px;background:var(--card)}
@@ -232,7 +233,7 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .step .mx{width:auto;padding:0 10px;font-size:14px;font-weight:700}
 .step .mx[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .step{flex-wrap:wrap;justify-content:flex-end}
-@media(max-width:520px){.course{grid-template-columns:8px minmax(0,1fr)}.course .step{grid-column:2;justify-content:flex-start}.course .dot{grid-row:span 2}}
+@media(max-width:520px){.course:not(.cfix){grid-template-columns:8px minmax(0,1fr)}.course.cfix .dot{grid-row:auto}.course .step{grid-column:2;justify-content:flex-start}.course .dot{grid-row:span 2}}
 .newsc{display:grid;gap:14px;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
 .newsc b{display:block;font-size:17px}.newsc p{margin:4px 0 0;color:var(--mute);font-size:15px}
 .newsc .ghost{justify-self:start}
@@ -1015,7 +1016,7 @@ function setTheme(v){theme=['light','dark'].includes(v)?v:'auto';LS.set('emhar-t
 setTheme(theme);
 
 /* ---------- Notes de version et mises à jour à venir (table news, modifiable dans Supabase) ---------- */
-const APP_VERSION='1.14';
+const APP_VERSION='1.15';
 let NEWS=LS.get('emhar-news',null);
 const dfr=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}catch(e){return ''}};
 async function loadNews(){
@@ -1076,9 +1077,19 @@ function feedbackView(){
 }
 
 /* ---------- Écran d'accueil ---------- */
+/* Test blanc : toujours 52 questions, réparties selon la taille de chaque cours */
+const EXAM_N=52;
+function examSplit(K){
+  const tot=K.reduce((a,k)=>a+total(k),0),n=Math.min(EXAM_N,tot);
+  const raw=K.map(k=>({k,v:n*total(k)/tot}));raw.forEach(r=>r.n=Math.floor(r.v));
+  let left=n-raw.reduce((a,r)=>a+r.n,0);
+  raw.slice().sort((a,b)=>(b.v-b.n)-(a.v-a.n)).forEach(r=>{if(left>0){r.n++;left--}});
+  return raw;
+}
+function examPick(K){let qs=[];examSplit(K||keys()).forEach(r=>qs=qs.concat(shuffle(BANK.filter(q=>q.c===r.k)).slice(0,r.n)));return shuffle(qs)}
 function setup(keep){const y0=window.scrollY;
   view='home';clearInterval(timerId);S=null;
-  const K=keys(),sum=K.reduce((s,k)=>s+cfg.n[k],0);
+  const K=keys(),exam=cfg.mode==='exam',split=examSplit(K),sum=exam?split.reduce((a,r)=>a+r.n,0):K.reduce((s,k)=>s+cfg.n[k],0);
   app.innerHTML=`
   <div class="head"><h1>Révisions EMHAR</h1><div class="hbtn"><button class="ghost small" id="board">Classement</button><button class="ghost small" id="prog">Mes progrès</button></div></div>
   <p class="sub">CMA 2043</p>
@@ -1089,18 +1100,24 @@ function setup(keep){const y0=window.scrollY;
   <h2>Mode</h2>
   <div class="modes">
     <button class="mode" data-mode="train" aria-pressed="${cfg.mode==='train'}"><b>Entraînement</b><span>Correction détaillée après chaque question validée</span></button>
-    <button class="mode" data-mode="exam" aria-pressed="${cfg.mode==='exam'}"><b>Test blanc</b><span>Conditions réelles : temps global de 75 s × nombre de questions, correction à la fin</span></button>
+    <button class="mode" data-mode="exam" aria-pressed="${cfg.mode==='exam'}"><b>Test blanc</b><span>Conditions réelles : ${EXAM_N} questions, ${Math.round(EXAM_N*PER_Q/60)} min, correction à la fin</span></button>
   </div>
   ${cfg.mode==='train'?`<label class="opt"><input type="checkbox" id="chrono" ${cfg.chrono?'checked':''}> Activer le temps global en entraînement (mis en pause pendant la lecture des corrections)</label>`:''}
 
 
+  ${exam?`
+  <h2>Questions par cours</h2>
+  <p class="small-note">${sum} questions, comme le vrai test : nombre fixe, réparti selon la taille de chaque cours.</p>
+  ${split.map(r=>`<div class="course cfix"><span class="dot" style="background:${COURSES[r.k].c}"></span><div><b>${COURSES[r.k].n}</b><small>${COURSES[r.k].ref}</small></div><span class="exn">${r.n}</span></div>`).join('')}
+`:`
   <h2>Questions par cours</h2>
   ${K.map(k=>`<div class="course"><span class="dot" style="background:${COURSES[k].c}"></span>
     <div><b>${COURSES[k].n}</b><small>${COURSES[k].ref} · ${total(k)} questions disponibles</small></div>
     <div class="step"><button class="mx" data-min="${k}" aria-pressed="${cfg.n[k]===0}" aria-label="Aucune question ${COURSES[k].n}">Min</button><button data-dec="${k}" aria-label="Moins de questions ${COURSES[k].n}">−</button><input class="num" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${total(k)}" value="${cfg.n[k]}" data-num="${k}" aria-label="Nombre de questions ${COURSES[k].n}, de 0 à ${total(k)}"><button data-inc="${k}" aria-label="Plus de questions ${COURSES[k].n}">+</button><button class="mx" data-max="${k}" aria-pressed="${cfg.n[k]===total(k)}" aria-label="Toutes les questions ${COURSES[k].n}">Max</button></div></div>`).join('')}
   <div class="quick"><button class="chip" data-all="max">Tout prendre</button><button class="chip" data-all="5">5 par cours</button><button class="chip" data-all="0">Tout vider</button></div>
+`}
   <button class="go" id="start" ${sum?'':'disabled'}>Commencer ${TESTS[cfg.test].n} · ${sum} question${sum>1?'s':''}</button>
-  <p class="summary">${sum?`Temps global : ${mmss(sum*PER_Q)} (${sum} × 75 s)`:'Choisis au moins une question'}</p>
+  <p class="summary">${sum?`Temps global : ${exam?Math.round(sum*PER_Q/60)+' min':mmss(sum*PER_Q)} (${sum} × 75 s)`:'Choisis au moins une question'}</p>
   <div class="foot">
     <button class="fbk" id="fbk"><span class="fbi" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg></span><span><b>Une idée ou un bug ?</b><small>Propose une amélioration ou signale un problème</small></span></button>
     <div id="news"></div>
@@ -1123,7 +1140,7 @@ function setup(keep){const y0=window.scrollY;
   app.querySelectorAll('[data-all]').forEach(b=>b.onclick=()=>{K.forEach(k=>cfg.n[k]=b.dataset.all==='max'?total(k):Math.min(total(k),+b.dataset.all));save();setup(true)});
   app.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{cfg.mode=b.dataset.mode;save();setup(true)});
   const ch=document.getElementById('chrono');if(ch)ch.onchange=()=>{cfg.chrono=ch.checked;save()};
-  on('start',()=>{let qs=[];K.forEach(k=>qs=qs.concat(shuffle(BANK.filter(q=>q.c===k)).slice(0,cfg.n[k])));start(shuffle(qs),'libre')});
+  on('start',()=>{if(exam)return start(examPick(K),'libre');let qs=[];K.forEach(k=>qs=qs.concat(shuffle(BANK.filter(q=>q.c===k)).slice(0,cfg.n[k])));start(shuffle(qs),'libre')});
   window.scrollTo({top:keep===true?y0:0});
 }
 
@@ -1304,10 +1321,10 @@ function buildRecos(rec,A,errs){
   const rev=cs.reduce((a,c)=>a+c.rev,0),weak=cs.filter(c=>c.rate).sort((a,b)=>b.rate-a.rate)[0];
   if(rev>=3&&weak&&testHistory().length>1){const N=Math.min(15,pool.length);out.push({title:'Entraînement ciblé sur tes points faibles',why:`Basé sur toutes tes sessions : ${COURSES[weak.k].n} est ton cours le plus raté (${pct(weak.rate)} d'erreurs) et ${rev} questions sont à revoir.`,btn:`${N} questions ciblées`,mode:'train',kind:'cible',qs:()=>pickTargeted(N,K)})}
   // 4. Passer au test blanc quand l'entraînement est réussi
-  if(rec.mode==='train'&&nt>=14&&rec.n>=8){const N=Math.min(20,pool.length);out.push({title:'Passer un test blanc',why:`Basé sur tes résultats : ${fr(nt)}/20 en entraînement. Vérifie-le en conditions réelles, avec le temps global (${N} questions, ${mmss(N*PER_Q)}).`,btn:'Lancer le test blanc',mode:'exam',kind:'libre',qs:()=>{let q=[];K.forEach(k=>q=q.concat(shuffle(BANK.filter(x=>x.c===k)).slice(0,Math.ceil(N/K.length))));return shuffle(q).slice(0,N)}})}
+  if(rec.mode==='train'&&nt>=14&&rec.n>=8){out.push({title:'Passer un test blanc',why:`Basé sur tes résultats : ${fr(nt)}/20 en entraînement. Vérifie-le en conditions réelles : ${EXAM_N} questions en ${Math.round(EXAM_N*PER_Q/60)} min.`,btn:'Lancer le test blanc',mode:'exam',kind:'libre',qs:()=>examPick(K)})}
   // 5. Test blanc raté : repasser par l'entraînement
   if(rec.mode==='exam'&&nt<10)out.push({title:'Repasser par l\u2019entraînement',why:`Basé sur tes résultats : ${fr(nt)}/20 en test blanc. Travaille d'abord avec la correction après chaque question, puis refais un test blanc.`,btn:'Entraînement ciblé',mode:'train',kind:'cible',qs:()=>pickTargeted(Math.min(15,pool.length),K)});
-  if(rec.timeout)out.push({title:'Gérer ton temps',why:`Basé sur tes résultats : le temps global s'est écoulé avant la fin. En test blanc, ne bloque pas plus de 75 s sur une question.`,btn:'Nouveau test blanc',mode:'exam',kind:'libre',qs:()=>shuffle(pool).slice(0,Math.min(rec.n,pool.length))});
+  if(rec.timeout)out.push({title:'Gérer ton temps',why:`Basé sur tes résultats : le temps global s'est écoulé avant la fin. En test blanc, ne bloque pas plus de 75 s sur une question.`,btn:'Nouveau test blanc',mode:'exam',kind:'libre',qs:()=>examPick(K)});
   // 6. Questions jamais vues
   const news=pool.filter(q=>!st[q.id]);
   if(news.length&&out.length<4)out.push({title:`Découvrir ${news.length>20?'20 des ':'les '}${news.length} questions jamais vues`,why:'Basé sur ton historique : tu ne les as encore jamais rencontrées.',btn:'Les découvrir',mode:'train',kind:'libre',qs:()=>shuffle(news).slice(0,20)});
