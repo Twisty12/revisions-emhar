@@ -91,6 +91,7 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .next .go{width:auto;padding:0 28px;margin:0;min-height:52px}
 .qnav{display:flex;gap:8px;margin-top:16px}.qnav .ghost{flex:1}.qnav .ghost:disabled{opacity:.4}
 .qn{text-align:center;margin:10px 0 0}
+.nul{margin:6px 0 0;padding-left:18px}.nul li{margin:2px 0}
 .linkbtn[hidden]{display:none}.linkbtn{display:block;margin:14px auto 0;background:none;border:0;color:var(--mute);text-decoration:underline;font-size:14px;min-height:44px}
 .rep{margin-top:12px;padding:16px;border-radius:14px;background:var(--card);border:1px solid var(--line)}.rep .fta{min-height:100px;margin-top:8px}.rep-ok{text-align:center;margin-top:12px}
 .rvl{display:grid;gap:8px;margin-top:14px}
@@ -924,12 +925,15 @@ async function loadNews(){
   try{const r=await sbFetch('/rest/v1/news?select=kind,version,title,body,published_on,sort&order=sort.desc,published_on.desc');if(!r.ok)return;
     const d=await r.json();if(!Array.isArray(d))return;NEWS=d;LS.set('emhar-news',d);if(view==='home')paintNews();else if(view==='news')newsView()}catch(e){}
 }
+const nbody=b=>{const L=String(b||'').split('\n').map(x=>x.trim()).filter(Boolean);if(!L.length)return '';
+  const it=L.filter(x=>/^[-•]/.test(x));
+  return it.length?`<ul class="nul">${L.map(x=>`<li>${esc(x.replace(/^[-•]\s*/,''))}</li>`).join('')}</ul>`:`<p>${esc(L.join(' '))}</p>`};
 function paintNews(){
   const box=document.getElementById('news');if(!box)return;
   if(!NEWS){box.innerHTML='';return}
   const patch=NEWS.filter(n=>n.kind==='patch'),next=NEWS.filter(n=>n.kind==='avenir'),last=patch[0];
   box.innerHTML=`<div class="newsc">
-    ${last?`<div><span class="lab">Nouveautés · version ${esc(last.version||'')}${last.published_on?' · '+esc(dfr(last.published_on)):''}</span><b>${esc(last.title)}</b>${last.body?`<p>${esc(last.body)}</p>`:''}</div>`:''}
+    ${last?`<div><span class="lab">Nouveautés · version ${esc(last.version||'')}${last.published_on?' · '+esc(dfr(last.published_on)):''}</span><b>${esc(last.title)}</b>${nbody(last.body)}</div>`:''}
     ${next.length?`<div class="nnext"><span class="lab">À venir</span><ul>${next.map(n=>`<li><b>${esc(n.title)}</b>${n.body?` <span>${esc(n.body)}</span>`:''}</li>`).join('')}</ul></div>`:''}
     ${patch.length>1?`<button class="ghost small" id="allnews">Historique des versions</button>`:''}
   </div>`;
@@ -941,7 +945,7 @@ function newsView(){
   app.innerHTML=`<div class="top"><button class="ghost small" id="back">← Accueil</button></div>
   <h1>Notes de version</h1><p class="sub">Version actuelle : ${APP_VERSION}</p>
   ${next.length?`<h2>À venir</h2><div class="nlist">${next.map(n=>`<div class="nitem"><b>${esc(n.title)}</b>${n.body?`<p>${esc(n.body)}</p>`:''}</div>`).join('')}</div>`:''}
-  <h2>Mises à jour</h2><div class="nlist">${patch.map(n=>`<div class="nitem"><span class="lab">Version ${esc(n.version||'')}${n.published_on?' · '+esc(dfr(n.published_on)):''}</span><b>${esc(n.title)}</b>${n.body?`<p>${esc(n.body)}</p>`:''}</div>`).join('')||'<p class="empty neutral">Aucune note pour le moment.</p>'}</div>`;
+  <h2>Mises à jour</h2><div class="nlist">${patch.map(n=>`<div class="nitem"><span class="lab">Version ${esc(n.version||'')}${n.published_on?' · '+esc(dfr(n.published_on)):''}</span><b>${esc(n.title)}</b>${nbody(n.body)}</div>`).join('')||'<p class="empty neutral">Aucune note pour le moment.</p>'}</div>`;
   document.getElementById('back').onclick=setup;window.scrollTo({top:0});
 }
 
