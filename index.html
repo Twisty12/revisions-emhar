@@ -223,6 +223,13 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .step .mx[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .step{flex-wrap:wrap;justify-content:flex-end}
 @media(max-width:520px){.course{grid-template-columns:8px minmax(0,1fr)}.course .step{grid-column:2;justify-content:flex-start}.course .dot{grid-row:span 2}}
+.newsc{display:grid;gap:14px;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.newsc b{display:block;font-size:17px}.newsc p{margin:4px 0 0;color:var(--mute);font-size:15px}
+.newsc .ghost{justify-self:start}
+.nnext{padding-top:12px;border-top:1px solid var(--line)}
+.nnext ul{margin:6px 0 0;padding-left:18px}.nnext li{margin:4px 0}.nnext li b{display:inline;font-size:15px}.nnext li span{color:var(--mute);font-size:14px}
+.nlist{display:grid;gap:10px}.nitem{padding:14px 16px;border:1px solid var(--line);border-radius:14px}.nitem b{display:block;font-size:17px}.nitem p{margin:4px 0 0;color:var(--mute)}
+.credit{text-align:center;color:var(--mute);font-size:14px;line-height:1.6;margin:28px 0 0}.credit b{color:var(--ink)}.credit span{font-size:13px}
 @media(pointer:coarse){.hint{display:none}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -900,6 +907,35 @@ let theme=LS.get('emhar-theme','auto');
 function setTheme(v){theme=['light','dark'].includes(v)?v:'auto';LS.set('emhar-theme',theme);if(theme==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.dataset.theme=theme}
 setTheme(theme);
 
+/* ---------- Notes de version et mises à jour à venir (table news, modifiable dans Supabase) ---------- */
+const APP_VERSION='1.10';
+let NEWS=LS.get('emhar-news',null);
+const dfr=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}catch(e){return ''}};
+async function loadNews(){
+  try{const r=await sbFetch('/rest/v1/news?select=kind,version,title,body,published_on,sort&order=sort.desc,published_on.desc');if(!r.ok)return;
+    const d=await r.json();if(!Array.isArray(d))return;NEWS=d;LS.set('emhar-news',d);if(view==='home')paintNews();else if(view==='news')newsView()}catch(e){}
+}
+function paintNews(){
+  const box=document.getElementById('news');if(!box)return;
+  if(!NEWS){box.innerHTML='';return}
+  const patch=NEWS.filter(n=>n.kind==='patch'),next=NEWS.filter(n=>n.kind==='avenir'),last=patch[0];
+  box.innerHTML=`<div class="newsc">
+    ${last?`<div><span class="lab">Nouveautés · version ${esc(last.version||'')}${last.published_on?' · '+esc(dfr(last.published_on)):''}</span><b>${esc(last.title)}</b>${last.body?`<p>${esc(last.body)}</p>`:''}</div>`:''}
+    ${next.length?`<div class="nnext"><span class="lab">À venir</span><ul>${next.map(n=>`<li><b>${esc(n.title)}</b>${n.body?` <span>${esc(n.body)}</span>`:''}</li>`).join('')}</ul></div>`:''}
+    ${patch.length>1?`<button class="ghost small" id="allnews">Historique des versions</button>`:''}
+  </div>`;
+  const b=document.getElementById('allnews');if(b)b.onclick=newsView;
+}
+function newsView(){
+  view='news';clearInterval(timerId);S=null;
+  const patch=(NEWS||[]).filter(n=>n.kind==='patch'),next=(NEWS||[]).filter(n=>n.kind==='avenir');
+  app.innerHTML=`<div class="top"><button class="ghost small" id="back">← Accueil</button></div>
+  <h1>Notes de version</h1><p class="sub">Version actuelle : ${APP_VERSION}</p>
+  ${next.length?`<h2>À venir</h2><div class="nlist">${next.map(n=>`<div class="nitem"><b>${esc(n.title)}</b>${n.body?`<p>${esc(n.body)}</p>`:''}</div>`).join('')}</div>`:''}
+  <h2>Mises à jour</h2><div class="nlist">${patch.map(n=>`<div class="nitem"><span class="lab">Version ${esc(n.version||'')}${n.published_on?' · '+esc(dfr(n.published_on)):''}</span><b>${esc(n.title)}</b>${n.body?`<p>${esc(n.body)}</p>`:''}</div>`).join('')||'<p class="empty neutral">Aucune note pour le moment.</p>'}</div>`;
+  document.getElementById('back').onclick=setup;window.scrollTo({top:0});
+}
+
 /* ---------- Boîte à idées ---------- */
 let fbKind='idee',fbLast=0;
 function feedbackView(){
@@ -957,9 +993,12 @@ function setup(keep){const y0=window.scrollY;
   <p class="summary">${sum?`Temps global : ${mmss(sum*PER_Q)} (${sum} × 75 s)`:'Choisis au moins une question'}</p>
   <div class="foot">
     <button class="fbk" id="fbk"><span class="fbi" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg></span><span><b>Une idée ou un bug ?</b><small>Propose une amélioration ou signale un problème</small></span></button>
+    <div id="news"></div>
     <div class="themes" role="group" aria-label="Thème"><span class="lab">Thème</span>${[['auto','Auto'],['light','Clair'],['dark','Sombre']].map(([v,l])=>`<button class="chip test" data-th="${v}" aria-pressed="${theme===v}">${l}</button>`).join('')}</div>
-  </div>`;
+  </div>
+  <p class="credit">Site créé par <b>DE OLIVEIRA</b> · 2643 FS1 CMA<br><span>Version ${APP_VERSION}</span></p>`;
   const on=(id,f)=>{const e=document.getElementById(id);if(e)e.onclick=f};
+  paintNews();loadNews();
   on('prog',progress);on('badges',badgesView);on('board',leaderboard);on('avpick',()=>avatarView(setup));
   app.querySelectorAll('[data-test]').forEach(b=>b.onclick=()=>{cfg.test=b.dataset.test;save();setup(true)});
   app.querySelectorAll('[data-inc],[data-dec]').forEach(b=>b.onclick=()=>{const k=b.dataset.inc||b.dataset.dec;cfg.n[k]=Math.max(0,Math.min(total(k),cfg.n[k]+(b.dataset.inc?1:-1)));save();setup(true)});
