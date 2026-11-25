@@ -951,7 +951,7 @@ function setup(keep){const y0=window.scrollY;
   <h2>Questions par cours</h2>
   ${K.map(k=>`<div class="course"><span class="dot" style="background:${COURSES[k].c}"></span>
     <div><b>${COURSES[k].n}</b><small>${COURSES[k].ref} · ${total(k)} questions disponibles</small></div>
-    <div class="step"><button data-dec="${k}" aria-label="Moins de questions ${COURSES[k].n}">−</button><input class="num" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${total(k)}" value="${cfg.n[k]}" data-num="${k}" aria-label="Nombre de questions ${COURSES[k].n}, de 0 à ${total(k)}"><button data-inc="${k}" aria-label="Plus de questions ${COURSES[k].n}">+</button><button class="mx" data-max="${k}" aria-pressed="${cfg.n[k]===total(k)}" aria-label="Toutes les questions ${COURSES[k].n}">Max</button></div></div>`).join('')}
+    <div class="step"><button class="mx" data-min="${k}" aria-pressed="${cfg.n[k]===0}" aria-label="Aucune question ${COURSES[k].n}">Min</button><button data-dec="${k}" aria-label="Moins de questions ${COURSES[k].n}">−</button><input class="num" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${total(k)}" value="${cfg.n[k]}" data-num="${k}" aria-label="Nombre de questions ${COURSES[k].n}, de 0 à ${total(k)}"><button data-inc="${k}" aria-label="Plus de questions ${COURSES[k].n}">+</button><button class="mx" data-max="${k}" aria-pressed="${cfg.n[k]===total(k)}" aria-label="Toutes les questions ${COURSES[k].n}">Max</button></div></div>`).join('')}
   <div class="quick"><button class="chip" data-all="max">Tout prendre</button><button class="chip" data-all="5">5 par cours</button><button class="chip" data-all="0">Tout vider</button></div>
   <button class="go" id="start" ${sum?'':'disabled'}>Commencer ${TESTS[cfg.test].n} · ${sum} question${sum>1?'s':''}</button>
   <p class="summary">${sum?`Temps global : ${mmss(sum*PER_Q)} (${sum} × 75 s)`:'Choisis au moins une question'}</p>
@@ -964,6 +964,7 @@ function setup(keep){const y0=window.scrollY;
   app.querySelectorAll('[data-test]').forEach(b=>b.onclick=()=>{cfg.test=b.dataset.test;save();setup(true)});
   app.querySelectorAll('[data-inc],[data-dec]').forEach(b=>b.onclick=()=>{const k=b.dataset.inc||b.dataset.dec;cfg.n[k]=Math.max(0,Math.min(total(k),cfg.n[k]+(b.dataset.inc?1:-1)));save();setup(true)});
   app.querySelectorAll('[data-max]').forEach(b=>b.onclick=()=>{const k=b.dataset.max;cfg.n[k]=total(k);save();setup(true)});
+  app.querySelectorAll('[data-min]').forEach(b=>b.onclick=()=>{const k=b.dataset.min;cfg.n[k]=0;save();setup(true)});
   app.querySelectorAll('[data-num]').forEach(inp=>{
     inp.onfocus=()=>{try{inp.select()}catch(e){}};
     inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();inp.blur()}};
