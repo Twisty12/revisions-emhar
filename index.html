@@ -859,7 +859,7 @@ function badgeModal(b,on,t){
   m.onclick=e=>{if(e.target===m)close()};m.querySelector('.mclose').onclick=close;document.addEventListener('keydown',esck);
   document.body.appendChild(m);m.querySelector('.mclose').focus();
 }
-const btile=(b,on,t)=>`<button class="btile ${on?'got':''}" data-b="${b[0]}">${badgeIcon(b,on,84)}<b>${esc(b[1])}</b><small>${on?(t?new Date(t).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'Obtenu'):'À débloquer'}</small></button>`;
+const btile=(b,on,t)=>`<button class="btile ${on?'got':''}" data-b="${b[0]}">${badgeIcon(b,on,84)}<b>${esc(b[1])}</b><small>${on?'Obtenu':'À débloquer'}</small></button>`;
 function badgeIcon(b,on,size=48){return ICONS.badge(b[0],size,!on)}
 function ring(v){const r=20,c=2*Math.PI*r,f=Math.min(1,v/GOAL);return `<svg class="ring" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="${r}" stroke="var(--line)"/><circle cx="24" cy="24" r="${r}" stroke="${f>=1?'var(--ok)':'var(--D)'}" stroke-dasharray="${c*f} ${c}" transform="rotate(-90 24 24)"/></svg>`}
 function rankStrip(){const st=rankState(),b=rankBar(st);
