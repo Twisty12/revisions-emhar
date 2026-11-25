@@ -89,6 +89,15 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .ref{color:var(--mute);font-size:14px}
 .next{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
 .next .go{width:auto;padding:0 28px;margin:0;min-height:52px}
+.qnav{display:flex;gap:8px;margin-top:16px}.qnav .ghost{flex:1}.qnav .ghost:disabled{opacity:.4}
+.qn{text-align:center;margin:10px 0 0}
+.linkbtn[hidden]{display:none}.linkbtn{display:block;margin:14px auto 0;background:none;border:0;color:var(--mute);text-decoration:underline;font-size:14px;min-height:44px}
+.rep{margin-top:12px;padding:16px;border-radius:14px;background:var(--card);border:1px solid var(--line)}.rep .fta{min-height:100px;margin-top:8px}.rep-ok{text-align:center;margin-top:12px}
+.rvl{display:grid;gap:8px;margin-top:14px}
+.rvi{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:center;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card)}
+.rvn{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--bg);font-weight:700;font-size:14px}
+.rvi.miss{border-style:dashed}.rvi.miss .rvn{background:none;color:var(--ko);border:2px solid var(--ko)}
+.rvt{display:grid;gap:2px;min-width:0}.rvq{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rva{font-size:14px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rvi.miss .rva{color:var(--ko)}
 .hint{color:var(--mute);font-size:13px;text-align:center;margin-top:14px}
 /* results */
 .score{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 28px;padding:24px;border-radius:18px;background:var(--card)}
@@ -908,7 +917,7 @@ function setTheme(v){theme=['light','dark'].includes(v)?v:'auto';LS.set('emhar-t
 setTheme(theme);
 
 /* ---------- Notes de version et mises à jour à venir (table news, modifiable dans Supabase) ---------- */
-const APP_VERSION='1.10';
+const APP_VERSION='1.11';
 let NEWS=LS.get('emhar-news',null);
 const dfr=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}catch(e){return ''}};
 async function loadNews(){
@@ -1021,57 +1030,98 @@ function setup(keep){const y0=window.scrollY;
 function start(qs,kind){
   if(!me){gateNext=()=>start(qs,kind);leaderboard();return}
   clearInterval(timerId);view='quiz';
-  S={qs:qs.map(q=>({q,order:shuffle([0,1,2])})),i:0,ans:[],kind:kind||'libre',exam:cfg.mode==='exam',timed:cfg.mode==='exam'||cfg.chrono,t0:Date.now(),budget:qs.length*PER_Q,left:qs.length*PER_Q,timeout:false};
+  S={qs:qs.map(q=>({q,order:shuffle([0,1,2])})),i:0,ans:[],reach:0,kind:kind||'libre',exam:cfg.mode==='exam',timed:cfg.mode==='exam'||cfg.chrono,t0:Date.now(),budget:qs.length*PER_Q,left:qs.length*PER_Q,timeout:false};
   if(S.timed)timerId=setInterval(tick,1000);
   question();
 }
+const answeredN=()=>S.ans.filter(Boolean).length;
 function tick(){
-  if(!S||view!=='quiz')return clearInterval(timerId);
-  if(S.answered&&!S.exam)return; // pause pendant la lecture de la correction
+  if(!S||view!=='quiz'||S.locked)return clearInterval(timerId);
+  if(!S.exam&&(S.answered||S.reporting))return; // pause pendant la correction ou un signalement
   S.left--;paintTimer();
-  if(S.left<=0){clearInterval(timerId);S.timeout=true;
-    for(let i=S.ans.length;i<S.qs.length;i++)S.ans.push({q:S.qs[i].q,chosen:-1,ok:false});
-    results();}
+  if(S.left<=0){S.timeout=true;finish(true)}
+}
+/* Fin du quiz : plus aucune réponse ne peut changer */
+function finish(fill){
+  clearInterval(timerId);S.locked=true;
+  S.final=[];S.qs.forEach((it,i)=>{if(S.ans[i])S.final.push(S.ans[i]);else if(fill)S.final.push({q:it.q,chosen:-1,ok:false})});
+  results();
+}
+function hand(){
+  const miss=S.qs.length-answeredN();
+  if(miss&&!confirm(`${miss} question${miss>1?'s':''} sans réponse ${miss>1?'seront comptées':'sera comptée'} comme fausse${miss>1?'s':''}. Rendre ta copie quand même ?`))return;
+  finish(true);
 }
 function paintTimer(){
   const tm=document.getElementById('timer');if(!tm)return;
   document.getElementById('tt').textContent=mmss(S.left);
   document.getElementById('tb').style.width=(S.left/S.budget*100)+'%';
-  const n=S.qs.length-S.i;tm.classList.toggle('low',S.left<n*PER_Q*0.5||S.left<=30);
+  const n=S.qs.length-answeredN();tm.classList.toggle('low',S.left<n*PER_Q*0.5||S.left<=30);
+}
+const timerHTML=()=>S.timed?`<div class="timer" id="timer"><span>Temps restant</span><b id="tt">${mmss(S.left)}</b><span class="t"><i id="tb"></i></span></div>`:'';
+function quizTop(label,tag){
+  const n=S.qs.length,done=S.exam?answeredN():S.reach;
+  return `<div class="top"><span class="count">${label}</span>${tag||''}${S.exam?'<button class="quit" id="hand">Rendre ma copie</button>':'<button class="quit" id="quit">Arrêter</button>'}</div>
+  <div class="bar"><i style="width:${done/n*100}%"></i></div>${timerHTML()}`;
+}
+function bindTop(){
+  const h=document.getElementById('hand');if(h)h.onclick=hand;
+  const qt=document.getElementById('quit');if(qt)qt.onclick=()=>{if(answeredN())finish(false);else{clearInterval(timerId);setup()}};
+  if(S.timed)paintTimer();
 }
 function question(){
-  const it=S.qs[S.i],q=it.q,C=COURSES[q.c],n=S.qs.length;
-  S.answered=false;S.sel=null;
+  const it=S.qs[S.i],q=it.q,C=COURSES[q.c],n=S.qs.length,prev=S.ans[S.i];
+  const review=!S.exam&&!!prev; // entraînement : question déjà corrigée, on la relit
+  S.answered=review;S.reporting=false;S.sel=S.exam&&prev?it.order.indexOf(prev.chosen):null;
   app.innerHTML=`
-  <div class="top"><span class="count">${S.i+1} / ${n}</span><span class="tag ${q.c}" style="background:${C.c}">${C.n}</span>${q.s?'<span class="syn">Synthèse</span>':''}<button class="quit" id="quit">Arrêter</button></div>
-  <div class="bar"><i style="width:${S.i/n*100}%"></i></div>
-  ${S.timed?`<div class="timer" id="timer"><span>Temps restant</span><b id="tt">${mmss(S.left)}</b><span class="t"><i id="tb"></i></span></div>`:''}
+  ${quizTop(`${S.i+1} / ${n}`,`<span class="tag ${q.c}" style="background:${C.c}">${C.n}</span>${q.s?'<span class="syn">Synthèse</span>':''}`)}
   <p class="q">${esc(q.q)}</p>
-  <div class="ans" role="radiogroup">${it.order.map((oi,k)=>`<button class="a" role="radio" aria-checked="false" data-k="${k}"><span class="k">${'ABC'[k]}</span><span>${esc(q.o[oi])}</span></button>`).join('')}</div>
-  <div class="next" id="valbox"><button class="go" id="val" disabled>Valider ma réponse</button></div>
+  <div class="ans" role="radiogroup">${it.order.map((oi,k)=>`<button class="a${S.sel===k?' sel':''}" role="radio" aria-checked="${S.sel===k}" data-k="${k}"><span class="k">${'ABC'[k]}</span><span>${esc(q.o[oi])}</span></button>`).join('')}</div>
+  ${review?'':`<div class="next" id="valbox"><button class="go" id="val" ${S.sel==null?'disabled':''}>${prev?'Confirmer ma réponse':'Valider ma réponse'}</button></div>`}
   <div id="fb"></div>
+  ${S.exam||S.i?`<div class="qnav">
+    <button class="ghost small" id="prev" ${S.i?'':'disabled'}>← Précédente</button>
+    ${S.exam?`<button class="ghost small" id="rv">Relecture · ${answeredN()}/${n}</button><button class="ghost small" id="skip">Suivante →</button>`:''}
+  </div>`:''}
+  ${S.exam?`<p class="small-note qn">${prev?'Réponse enregistrée. Tu peux la changer jusqu’à la fin du temps ou jusqu’à ce que tu rendes ta copie.':'Tu peux passer une question et y revenir plus tard.'}</p>`:''}
+  ${S.exam?'':`<button class="linkbtn" id="rep">Signaler un problème sur cette question</button><div id="repbox"></div>`}
   <p class="hint">Raccourcis : A, B, C (ou 1, 2, 3) pour choisir, Entrée pour valider puis continuer</p>`;
-  if(S.timed)paintTimer();
+  bindTop();
   app.querySelectorAll('.a').forEach(b=>b.onclick=()=>select(+b.dataset.k));
-  document.getElementById('val').onclick=validate;
-  document.getElementById('quit').onclick=()=>{clearInterval(timerId);if(S.ans.length)results();else setup()};
+  const on=(id,f)=>{const e=document.getElementById(id);if(e)e.onclick=f};
+  on('val',validate);on('prev',()=>{S.i--;question()});on('rv',examReview);
+  on('skip',()=>{if(S.i+1<n){S.i++;question()}else examReview()});
+  on('rep',reportOpen);
+  if(review)showCorrection(false);
   window.scrollTo({top:0});
 }
 function select(k){
-  if(S.answered)return;S.sel=k;
+  if(S.answered||S.locked)return;S.sel=k;
   app.querySelectorAll('.a').forEach(b=>{const on=+b.dataset.k===k;b.classList.toggle('sel',on);b.setAttribute('aria-checked',on)});
   document.getElementById('val').disabled=false;
 }
 function validate(){
-  if(S.answered||S.sel==null)return;S.answered=true;
+  if(S.answered||S.sel==null||S.locked)return;
   const it=S.qs[S.i],q=it.q,chosen=it.order[S.sel],ok=chosen===q.a;
-  S.ans.push({q,chosen,ok});
-  if(S.exam){next();return}
-  document.getElementById('valbox').remove();
+  S.ans[S.i]={q,chosen,ok};
+  if(S.exam){
+    // question suivante sans réponse, sinon relecture
+    const n=S.qs.length;let j=-1;
+    for(let d=1;d<n;d++){const k=(S.i+d)%n;if(!S.ans[k]){j=k;break}}
+    if(j<0)return examReview();
+    S.i=j;return question();
+  }
+  S.answered=true;S.reach=Math.max(S.reach,S.i+1);
+  const bar=app.querySelector('.bar i');if(bar)bar.style.width=(S.reach/S.qs.length*100)+'%';
+  showCorrection(true);
+}
+function showCorrection(scroll){
+  const it=S.qs[S.i],q=it.q,chosen=S.ans[S.i].chosen;
+  const vb=document.getElementById('valbox');if(vb)vb.remove();
   app.querySelectorAll('.a').forEach(b=>{const oi=it.order[+b.dataset.k];b.disabled=true;b.classList.remove('sel');if(oi===q.a)b.classList.add('good');else if(oi===chosen)b.classList.add('bad');else b.classList.add('dim')});
   document.getElementById('fb').innerHTML=correction(q,chosen,true,it.order)+`<div class="next"><button class="go" id="nx">${S.i+1<S.qs.length?'Question suivante':'Voir mes résultats'}</button></div>`;
-  const nx=document.getElementById('nx');nx.onclick=next;nx.focus({preventScroll:true});
-  document.getElementById('fb').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'nearest'});
+  const nx=document.getElementById('nx');nx.onclick=next;
+  if(scroll){nx.focus({preventScroll:true});document.getElementById('fb').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'nearest'})}
 }
 function correction(q,chosen,box,order){
   const ok=chosen===q.a,C=COURSES[q.c];
@@ -1083,7 +1133,60 @@ function correction(q,chosen,box,order){
   const inner=`${box?head:''}${good}<p><b>Explication :</b> ${esc(q.x)}</p>${figHTML(q)}${whyNot}<p class="keep">À retenir : ${esc(q.r)}</p><p class="ref">${C.ref} · ${C.n} · page ${q.p}</p>`;
   return box?`<div class="fb ${ok?'':'ko'}">${inner}</div>`:inner;
 }
-function next(){S.i++;if(S.i<S.qs.length)question();else{clearInterval(timerId);results()}}
+function next(){
+  if(S.locked)return;
+  if(S.i+1<S.qs.length){S.i++;question()}else finish(false);
+}
+/* Test blanc : relecture de la copie avant de la rendre */
+function examReview(){
+  if(S.locked)return;
+  const n=S.qs.length,miss=n-answeredN();S.sel=null;S.answered=false;
+  app.innerHTML=`
+  ${quizTop('Relecture')}
+  <h1 style="margin-top:4px">Relecture de ta copie</h1>
+  <p class="sub">${miss?`${miss} question${miss>1?'s':''} sans réponse. `:'Toutes les questions ont une réponse. '}Touche une question pour la relire ou changer ta réponse, jusqu’à la fin du temps.</p>
+  <div class="rvl">${S.qs.map((it,i)=>{const a=S.ans[i];return `<button class="rvi${a?'':' miss'}" data-i="${i}"><span class="rvn">${i+1}</span><span class="rvt"><span class="rvq">${esc(it.q.q)}</span><span class="rva">${a?`${'ABC'[it.order.indexOf(a.chosen)]} · ${esc(it.q.o[a.chosen])}`:'Pas encore de réponse'}</span></span></button>`}).join('')}</div>
+  <div class="next"><button class="go" id="hand2">Rendre ma copie</button></div>`;
+  bindTop();
+  app.querySelectorAll('.rvi').forEach(b=>b.onclick=()=>{S.i=+b.dataset.i;question()});
+  document.getElementById('hand2').onclick=hand;
+  window.scrollTo({top:0});
+}
+/* Entraînement : signaler un problème sur la question */
+let repLast=0;
+function reportOpen(){
+  const box=document.getElementById('repbox');if(!box||S.reporting)return;
+  S.reporting=true;document.getElementById('rep').hidden=true;
+  box.innerHTML=`<div class="rep">
+    <b>Signaler un problème sur cette question</b>
+    <p class="small-note">Erreur dans la question, une réponse ou la correction, ou une idée pour l’améliorer. La question et ses réponses sont jointes automatiquement.</p>
+    <textarea id="repm" class="fi fta" rows="4" maxlength="1000" placeholder="Ce qui ne va pas, ou ce qu’il faudrait changer"></textarea>
+    <div class="next"><button class="ghost" id="repx">Annuler</button><button class="go" id="reps">Envoyer</button></div>
+    <p id="repmsg" class="small-note" role="status"></p></div>`;
+  const ta=document.getElementById('repm'),msg=document.getElementById('repmsg');
+  ta.focus({preventScroll:true});box.scrollIntoView({block:'nearest'});
+  const close=()=>{S.reporting=false;box.innerHTML='';const r=document.getElementById('rep');if(r)r.hidden=false};
+  document.getElementById('repx').onclick=close;
+  document.getElementById('reps').onclick=async()=>{
+    const m=ta.value.trim();
+    if(m.length<5){msg.textContent='Écris au moins quelques mots.';return}
+    if(Date.now()-repLast<20000){msg.textContent='Attends quelques secondes avant d’envoyer un autre signalement.';return}
+    msg.textContent='Envoi…';
+    try{await session();const r=await authed('/rest/v1/feedback',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({kind:'question',message:m,pseudo:me?me.pseudo:null,context:questionContext()})});
+      if(r.ok){repLast=Date.now();box.innerHTML='<p class="small-note rep-ok">Merci, ton signalement est envoyé.</p>';S.reporting=false}
+      else msg.textContent='Envoi impossible pour le moment. Réessaie plus tard.'}
+    catch(e){msg.textContent='Pas de connexion internet : ton signalement n’a pas été envoyé.'}
+  };
+}
+function questionContext(){
+  const it=S.qs[S.i],q=it.q,C=COURSES[q.c],a=S.ans[S.i];
+  const L=[`Question n° ${q.id} (question ${S.i+1} sur ${S.qs.length} de l'entraînement)`,
+    `Catégorie : ${TESTS[cfg.test].n} · ${C.n} (${C.ref}, page ${q.p})${q.s?' · synthèse':''}`,
+    `Question : ${q.q}`,'Réponses proposées :'];
+  it.order.forEach((oi,k)=>L.push(`  ${'ABC'[k]} · ${q.o[oi]}${oi===q.a?'  (bonne réponse)':''}`));
+  L.push(a?`Réponse de l'utilisateur : ${'ABC'[it.order.indexOf(a.chosen)]}${a.ok?' (juste)':' (fausse)'}`:'Pas encore répondu au moment du signalement');
+  return L.join('\n');
+}
 
 const modeLabel=h=>(h.mode==='exam'?'Test blanc':'Entraînement')+(h.kind==='cible'?' ciblé':h.kind==='erreurs'?' · erreurs':'');
 
@@ -1113,7 +1216,7 @@ function buildRecos(rec,A,errs){
 /* ---------- Résultats ---------- */
 function results(){
   clearInterval(timerId);view='results';
-  const A=S.ans,n=A.length,good=A.filter(a=>a.ok).length;
+  const A=S.final||S.ans.filter(Boolean),n=A.length,good=A.filter(a=>a.ok).length;
   const errs=A.filter(a=>!a.ok);
   const used=S.timed?S.budget-S.left:Math.round((Date.now()-S.t0)/1000);
   const prev=testHistory().slice(-1)[0];
@@ -1227,11 +1330,12 @@ function drawChart(pts){
 }
 
 document.addEventListener('keydown',e=>{
-  if(view!=='quiz'||!S||!document.querySelector('.a'))return;
+  if(view!=='quiz'||!S||S.locked||!document.querySelector('.a'))return;
+  if(e.target.closest&&e.target.closest('textarea,input'))return;
   const m={a:0,b:1,c:2,'1':0,'2':1,'3':2}[e.key.toLowerCase()];
   if(m!=null&&!S.answered){e.preventDefault();select(m)}
   else if(e.key==='Enter'){
-    if(!S.answered&&S.sel!=null){e.preventDefault();validate()}
+    if(!S.answered&&S.sel!=null&&document.getElementById('val')){if(document.activeElement&&document.activeElement.tagName==='BUTTON'&&document.activeElement.id!=='val'&&!document.activeElement.classList.contains('a'))return;e.preventDefault();validate()}
     else if(S.answered&&document.getElementById('nx')&&document.activeElement!==document.getElementById('nx')){e.preventDefault();next()}
   }
 });
