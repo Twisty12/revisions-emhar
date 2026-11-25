@@ -780,7 +780,8 @@ function avatarView(back){
   window.scrollTo({top:0});
 }
 /* ---------- Récompenses : XP, grades, série de jours, objectif du jour, succès ---------- */
-const GRADES=[[0,'Élève mécano'],[300,'Mécanicien'],[800,'Mécanicien confirmé'],[1600,'Technicien'],[2800,'Technicien certifié'],[4500,'Chef d’équipe'],[7000,'Inspecteur'],[10000,'Expert maintenance']];
+// Paliers prévus pour ~30 EMHAR : environ 8 000 XP par EMHAR pour un élève assidu, grade maximal vers la fin de la formation
+const GRADES=[[0,'Élève mécano'],[4000,'Mécanicien'],[12000,'Mécanicien confirmé'],[28000,'Technicien'],[55000,'Technicien certifié'],[95000,'Chef d’équipe'],[150000,'Inspecteur'],[250000,'Expert maintenance']];
 const GOAL=50;
 const dayKey=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const prevDay=k=>{const d=new Date(k+'T12:00:00');d.setDate(d.getDate()-1);return dayKey(d)};
@@ -1066,7 +1067,7 @@ function setTheme(v){theme=['light','dark'].includes(v)?v:'auto';LS.set('emhar-t
 setTheme(theme);
 
 /* ---------- Notes de version et mises à jour à venir (table news, modifiable dans Supabase) ---------- */
-const APP_VERSION='1.17';
+const APP_VERSION='1.18';
 let NEWS=LS.get('emhar-news',null);
 const dfr=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}catch(e){return ''}};
 async function loadNews(){
