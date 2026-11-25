@@ -411,6 +411,46 @@ const BANK=[
 // Identifiants stables : lettre du cours + rang dans le cours (toujours ajouter les nouvelles questions à la fin d'un cours)
 {const c={};BANK.forEach(q=>{c[q.c]=(c[q.c]||0)+1;q.id=q.c+c[q.c]})}
 const BY_ID={};BANK.forEach(q=>BY_ID[q.id]=q);
+/* Reformulations : même notion, question posée autrement (explication, schéma et page communs) */
+const VARIANTS={
+D1:[{q:"Une diode comporte combien de zones semi-conductrices ?",o:["Trois : P, N et P","Deux : une zone P et une zone N","Quatre : P, N, P et N"],a:1,w:["Trois zones (PNP), c'est un transistor bipolaire, pas une diode.","","Quatre zones (PNPN), c'est le thyristor, pas une diode simple."]}],
+D2:[{q:"Un anneau circulaire est peint sur le corps d'une diode. Quelle broche repère-t-il ?",o:["La cathode K","L'anode A","La gâchette G"],a:0,w:["","L'anode est l'autre broche, du côté opposé à l'anneau.","Une diode n'a que deux broches : pas de gâchette (c'est le thyristor qui en a une)."]}],
+D3:[{q:"Une diode est bloquée (sens inverse) lorsque :",o:["L'anode est à un potentiel supérieur à la cathode","La cathode est à un potentiel supérieur à l'anode","Le courant va de l'anode vers la cathode"],a:1,w:["C'est la condition de conduction : la diode est passante.","","Un courant de A vers K, c'est le sens direct : la diode conduit."]}],
+D4:[{q:"Une diode passante présente environ 0,6 V à ses bornes. En quel semi-conducteur est-elle ?",o:["En germanium","En silicium","On ne peut pas le savoir"],a:1,w:["Le germanium a un seuil d'environ 0,2 V.","","La tension de seuil dépend justement du semi-conducteur : 0,6 V indique le silicium."]}],
+D5:[{q:"Une diode passante n'a qu'environ 0,2 V à ses bornes. En quel semi-conducteur est-elle ?",o:["En silicium","En germanium","On ne peut pas le savoir"],a:1,w:["Le silicium a un seuil d'environ 0,6 V.","","La tension de seuil dépend justement du semi-conducteur : 0,2 V indique le germanium."]}],
+D6:[{q:"Que se passe-t-il quand la tension inverse appliquée à une diode atteint Uc ?",o:["La diode devient passante en sens direct","Le courant inverse augmente brusquement : c'est le claquage","Le courant s'annule complètement"],a:1,w:["Le sens direct dépend du seuil Uo, pas de Uc.","","Avant Uc le courant inverse est déjà négligeable ; à Uc il augmente brusquement."]}],
+D7:[{q:"En première approche, une diode idéale bloquée est assimilée à :",o:["Un interrupteur ouvert","Un interrupteur fermé","Une résistance de quelques ohms"],a:0,w:["","L'interrupteur fermé, c'est la diode idéale qui conduit.","Quelques ohms, c'est la résistance dynamique d'une diode réelle passante."]}],
+D8:[{q:"Pour supporter une tension inverse plus élevée que celle d'une seule diode, on les monte :",o:["En parallèle","En série","Tête-bêche"],a:1,w:["En parallèle, on augmente le courant total, pas la tension inverse.","","Le montage tête-bêche n'est pas la solution donnée par le cours."]}],
+D9:[{q:"Un groupement doit laisser passer plus de courant qu'une seule diode. Comment monte-t-on les diodes ?",o:["En série","En parallèle","Une seule diode avec une résistance en série"],a:1,w:["En série, on augmente la tension inverse supportée, pas le courant.","","Une résistance en série limite le courant au lieu de l'augmenter."]}],
+D10:[{q:"Trois diodes au silicium passantes sont en série. Quelle chute de tension totale faut-il prendre en compte ?",o:["0,6 V","1,8 V","0,2 V"],a:1,w:["0,6 V, c'est le seuil d'une seule diode.","","0,2 V, c'est le seuil d'une diode au germanium."]}],
+D11:[{q:"Transformer la tension alternative du secteur en tension continue, c'est le rôle :",o:["Des diodes de redressement","Des LED","Des photodiodes"],a:0,w:["","Les LED émettent de la lumière.","Les photodiodes détectent la lumière."]}],
+D12:[{q:"Pour écrêter une surtension et réguler une tension continue, on utilise :",o:["Une diode Zener","Une photodiode","Une LED"],a:0,w:["","La photodiode détecte la lumière.","La LED émet de la lumière."]}],
+D13:[{q:"Une LED reste éteinte alors que le circuit est alimenté. Quelle cause est la plus probable ?",o:["Elle est montée à l'envers : le courant va de la cathode vers l'anode","Ses broches sont trop longues","Elle est montée dans le bon sens, de l'anode vers la cathode"],a:0,w:["","La longueur des broches ne change pas le fonctionnement.","Dans ce sens, elle devrait éclairer."]}],
+D14:[{q:"Deux LED de couleurs différentes ont-elles la même tension de seuil ?",o:["Oui, toutes les LED ont le même seuil","Non, le seuil dépend de la couleur, donc du dopage","Oui, si elles ont la même longueur de broches"],a:1,w:["Le seuil d'une LED varie avec sa couleur.","","La longueur des broches n'a rien à voir avec le seuil."]}],
+D15:[{q:"Sur un schéma, une diode a deux flèches qui pointent vers le composant. De quoi s'agit-il ?",o:["D'une LED","D'une photodiode","D'une diode Zener"],a:1,w:["La LED a des flèches qui sortent du composant (elle émet).","","La Zener se reconnaît à sa barre en forme de Z, pas à des flèches."]}],
+D16:[{q:"Quel composant est un dipôle symétrique au silicium qui protège contre les surtensions ?",o:["Le varistor (VDR)","Le thyristor","La photodiode"],a:0,w:["","Le thyristor a trois broches et n'est pas symétrique.","La photodiode réagit à la lumière, pas aux surtensions."]}],
+D17:[{q:"Quel composant possède une anode, une cathode et une gâchette ?",o:["La diode Zener","Le thyristor","Le transistor bipolaire"],a:1,w:["La Zener n'a que deux broches : anode et cathode.","","Le transistor bipolaire a une base, un collecteur et un émetteur."]}],
+D18:[{q:"Pour faire varier la valeur moyenne d'une tension redressée, on utilise :",o:["Un thyristor","Une LED","Un varistor"],a:0,w:["","La LED émet de la lumière, elle ne commande pas une tension.","Le varistor protège contre les surtensions, il ne règle rien."]}],
+D19:[{q:"Plus une photodiode reçoit de lumière, plus :",o:["Elle émet de lumière","Le courant inverse qui la traverse est grand","Elle se bloque"],a:1,w:["Émettre de la lumière, c'est le rôle de la LED.","","Au contraire, la lumière la fait conduire en inverse."]}],
+D20:[{q:"Quelle position du multimètre affiche la tension de seuil d'une diode hors circuit ?",o:["La position « test de diode »","La position voltmètre AC","La position ampèremètre"],a:0,w:["","Le voltmètre AC mesure une tension alternative dans un montage sous tension.","L'ampèremètre mesure un courant, pas un seuil."]}],
+D21:[{q:"À l'ohmmètre, une diode affiche une résistance faible dans les deux sens. Elle est :",o:["En bon état","Défectueuse (en court-circuit)","Simplement montée à l'envers"],a:1,w:["Une diode saine affiche une résistance infinie en sens bloqué.","","Le sens de branchement ne change rien : on teste les deux sens."]}],
+D22:[{q:"Pour mesurer une diode de façon fiable à l'ohmmètre, il faut de préférence :",o:["La sortir du montage","La mesurer sous tension","Mettre le multimètre en position AC"],a:0,w:["","L'ohmmètre s'utilise hors tension.","La position AC sert à mesurer une tension alternative, pas une résistance."]}],
+D23:[{q:"Sous tension, on mesure environ 0,6 V au voltmètre DC aux bornes d'une diode au silicium. On en déduit :",o:["Qu'elle conduit","Qu'elle est bloquée","Qu'elle a claqué"],a:0,w:["","Bloquée, elle aurait la tension inverse du circuit à ses bornes.","Le claquage se produit en inverse, à la tension Uc."]}],
+D24:[{q:"La résistance dynamique d'une diode passante est de l'ordre de :",o:["Quelques ohms","Quelques mégohms","Une valeur infinie"],a:0,w:["","Plusieurs mégohms, c'est l'ordre de grandeur d'une diode bloquée.","Une résistance infinie correspond à la diode bloquée idéale."]}],
+D25:[{q:"Lequel de ces types de LED n'est pas cité dans le cours ?",o:["La LED multicolore","La LED à gâchette","La LED standard"],a:1,w:["La LED multicolore est citée dans le cours.","","La LED standard est citée dans le cours."]}],
+D26:[{q:"Constituer des panneaux d'informations de grandes dimensions, c'est une application :",o:["Des diodes Zener","Des LED","Des thyristors"],a:1,w:["Les Zener écrêtent et régulent une tension.","","Les thyristors servent de redresseurs commandés."]}],
+D27:[{q:"Un composant laisse passer le courant dans un seul sens et le bloque dans l'autre. C'est :",o:["Un condensateur","Une diode","Une résistance"],a:1,w:["Le condensateur stocke de l'énergie.","","Une résistance laisse passer le courant dans les deux sens."]}],
+D28:[{q:"Une diode idéale est polarisée en inverse. Elle est assimilée à :",o:["Un interrupteur fermé","Un interrupteur ouvert","Une source de 0,6 V"],a:1,w:["L'interrupteur fermé correspond à une tension positive à ses bornes.","","0,6 V correspond au seuil d'une diode réelle au silicium qui conduit."]}],
+D29:[{q:"La cathode d'une diode est reliée à quelle zone de la jonction ?",o:["La zone P","La zone N","La zone de la gâchette"],a:1,w:["La zone P, c'est l'anode.","","Une diode n'a pas de gâchette."]}],
+D30:[{q:"Comment appelle-t-on la tension inverse à partir de laquelle une diode claque ?",o:["La tension de seuil Uo","La tension de claquage Uc","La tension directe maximale"],a:1,w:["Uo est le seuil de conduction en sens direct.","","Le claquage se produit en sens inverse, pas en sens direct."]}],
+D31:[{q:"Monter des diodes en parallèle permet surtout :",o:["De supporter une tension inverse plus grande","De faire passer un courant total plus grand","De supprimer la tension de seuil"],a:1,w:["La tension inverse s'augmente en montant les diodes en série.","","La tension de seuil reste présente dans tous les cas."]}],
+D32:[{q:"Quel composant transforme une tension alternative en tension continue ?",o:["La diode de redressement","La diode Zener","La LED"],a:0,w:["","La Zener écrête et régule une tension continue.","La LED émet de la lumière."]}],
+D33:[{q:"Quelle diode utilise-t-on pour réguler une tension continue ?",o:["La photodiode","La diode Zener","La LED infrarouge"],a:1,w:["La photodiode détecte la lumière.","","La LED infrarouge émet un rayonnement, elle ne régule rien."]}],
+D34:[{q:"Une diode PNPN commandée par une gâchette, c'est :",o:["Un varistor","Un thyristor","Une photodiode"],a:1,w:["Le varistor est un dipôle symétrique sans gâchette.","","La photodiode est commandée par la lumière, pas par une gâchette."]}],
+};
+// Tire une formulation au hasard (l'originale ou une reformulation)
+function pickForm(q){const base=BY_ID[q.id]||q,V=VARIANTS[base.id]||[];const k=Math.floor(Math.random()*(V.length+1));
+  if(!k)return base;const f=V[k-1];return Object.assign({},base,{q:f.q,o:f.o,a:f.a,w:f.w,vi:k})}
 // Tests EMHAR : chaque test regroupe ses cours. Ajouter ici les prochains tests (EMHAR 2, 3...).
 const TESTS={E1:{n:"EMHAR 1",courses:["D","T","A","S"]}};
 const TKEYS=Object.keys(TESTS);
@@ -918,7 +958,7 @@ function setTheme(v){theme=['light','dark'].includes(v)?v:'auto';LS.set('emhar-t
 setTheme(theme);
 
 /* ---------- Notes de version et mises à jour à venir (table news, modifiable dans Supabase) ---------- */
-const APP_VERSION='1.11';
+const APP_VERSION='1.12';
 let NEWS=LS.get('emhar-news',null);
 const dfr=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}catch(e){return ''}};
 async function loadNews(){
@@ -1034,7 +1074,7 @@ function setup(keep){const y0=window.scrollY;
 function start(qs,kind){
   if(!me){gateNext=()=>start(qs,kind);leaderboard();return}
   clearInterval(timerId);view='quiz';
-  S={qs:qs.map(q=>({q,order:shuffle([0,1,2])})),i:0,ans:[],reach:0,kind:kind||'libre',exam:cfg.mode==='exam',timed:cfg.mode==='exam'||cfg.chrono,t0:Date.now(),budget:qs.length*PER_Q,left:qs.length*PER_Q,timeout:false};
+  S={qs:qs.map(q=>({q:pickForm(q),order:shuffle([0,1,2])})),i:0,ans:[],reach:0,kind:kind||'libre',exam:cfg.mode==='exam',timed:cfg.mode==='exam'||cfg.chrono,t0:Date.now(),budget:qs.length*PER_Q,left:qs.length*PER_Q,timeout:false};
   if(S.timed)timerId=setInterval(tick,1000);
   question();
 }
@@ -1184,7 +1224,7 @@ function reportOpen(){
 }
 function questionContext(){
   const it=S.qs[S.i],q=it.q,C=COURSES[q.c],a=S.ans[S.i];
-  const L=[`Question n° ${q.id} (question ${S.i+1} sur ${S.qs.length} de l'entraînement)`,
+  const L=[`Question n° ${q.id}${q.vi?` · reformulation ${q.vi}`:' · formulation d\'origine'} (question ${S.i+1} sur ${S.qs.length} de l'entraînement)`,
     `Catégorie : ${TESTS[cfg.test].n} · ${C.n} (${C.ref}, page ${q.p})${q.s?' · synthèse':''}`,
     `Question : ${q.q}`,'Réponses proposées :'];
   it.order.forEach((oi,k)=>L.push(`  ${'ABC'[k]} · ${q.o[oi]}${oi===q.a?'  (bonne réponse)':''}`));
