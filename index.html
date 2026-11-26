@@ -100,6 +100,7 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .rvi.miss{border-style:dashed}.rvi.miss .rvn{background:none;color:var(--ko);border:2px solid var(--ko)}
 .rvt{display:grid;gap:2px;min-width:0}.rvq{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rva{font-size:14px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rvi.miss .rva{color:var(--ko)}
 .ico-rank{flex:none;display:block}
+.qfig{margin:4px 0 14px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);display:grid;place-items:center}.qfig svg{width:100%;max-width:340px;height:auto}
 .btiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
 .btile{display:grid;justify-items:center;align-content:start;gap:4px;padding:12px 6px 10px;border:1px solid var(--line);border-radius:16px;background:var(--bg);text-align:center;cursor:pointer}
 .btile.got{background:var(--card)}.btile b{font-size:13px;line-height:1.25}.btile:not(.got) b{color:var(--mute)}.btile small{font-size:11.5px;color:var(--mute)}.btile.got small{color:var(--ok);font-weight:600}
@@ -275,6 +276,74 @@ const COURSES={
  S:{n:"Servomécanismes",ref:"TH 47708",c:"var(--S)"}
 };
 // q: question · o: réponses · a: index bonne réponse · x: explication · r: à retenir · w: pourquoi chaque mauvaise réponse est fausse · p: page du cours
+/* Schémas affichés DANS la question (comme au vrai test). Dessinés en SVG, couleur du thème. */
+const QSVG=(()=>{
+const S=(vb,body)=>`<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schéma de la question" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" font-family="inherit" font-size="15">${body}</svg>`;
+const T=(x,y,t,a='middle',w=600)=>`<text x="${x}" y="${y}" text-anchor="${a}" fill="currentColor" stroke="none" font-weight="${w}">${t}</text>`;
+const tri=`<path d="M100 40v40l40-20z" fill="currentColor"/>`;
+const leads=`<path d="M30 60h70M140 60h70"/>`+T(30,48,'A','middle',700)+T(210,48,'K','middle',700);
+const arrow=(x1,y1,x2,y2)=>{const a=Math.atan2(y2-y1,x2-x1),h=9;return `<path d="M${x1} ${y1}L${x2} ${y2}"/><path d="M${x2} ${y2}L${x2-h*Math.cos(a-0.45)} ${y2-h*Math.sin(a-0.45)}M${x2} ${y2}L${x2-h*Math.cos(a+0.45)} ${y2-h*Math.sin(a+0.45)}"/>`};
+const D={};
+D.diode=S('0 0 240 110',leads+tri+`<path d="M140 38v44"/>`);
+D.zener=S('0 0 240 110',leads+tri+`<path d="M132 34l8 4v44l8 4"/>`);
+D.led=S('0 0 240 110',leads+tri+`<path d="M140 38v44"/>`+arrow(118,30,138,10)+arrow(132,34,152,14));
+D.photo=S('0 0 240 110',leads+tri+`<path d="M140 38v44"/>`+arrow(140,10,120,30)+arrow(154,14,134,34));
+D.thyr=S('0 0 240 120',leads+tri+`<path d="M140 38v44M140 80l22 26"/>`+T(176,112,'G','middle',700));
+// caractéristique I = f(U) d'une diode avec 3 zones
+D.caract=S('0 0 300 220',`<path d="M20 110h264M150 205V15" stroke-width="2"/><path d="M284 110l-8-4v8zM150 15l-4 8h8z" fill="currentColor" stroke="none"/>`
+ +T(290,128,'U','end')+T(160,22,'I','start')
+ +`<path d="M30 205C38 150 44 118 52 112L150 110.5C175 110 186 108 192 100C200 88 205 60 210 20" stroke-width="3.5"/>`
+ +`<path d="M192 116v-6" stroke-width="2"/>`+T(192,132,'Uo')+`<path d="M52 104v12" stroke-width="2"/>`+T(52,98,'Uc')
+ +`<circle cx="232" cy="58" r="13" stroke-width="2"/>`+T(232,63,'1')
+ +`<circle cx="100" cy="82" r="13" stroke-width="2"/>`+T(100,87,'2')
+ +`<circle cx="72" cy="170" r="13" stroke-width="2"/>`+T(72,175,'3'));
+// deux diodes : seuils différents
+D.seuils=S('0 0 300 200',`<path d="M20 180h264M30 190V15" stroke-width="2"/><path d="M284 180l-8-4v8zM30 15l-4 8h8z" fill="currentColor" stroke="none"/>`
+ +T(290,197,'U (V)','end')+T(40,24,'I','start')
+ +`<path d="M30 180L80 179C100 177 108 160 116 120C120 95 123 60 126 30" stroke-width="3.5"/>`
+ +`<path d="M30 180L190 179C210 177 218 160 226 120C230 95 233 60 236 30" stroke-width="3.5" stroke-dasharray="1 0"/>`
+ +T(104,52,'1')+T(214,52,'2')+`<path d="M102 176v8M212 176v8" stroke-width="2"/>`+T(102,197,'0,2')+T(212,197,'0,6'));
+// diode dans un circuit, polarités imposées
+D.circuit=S('0 0 300 150',`<path d="M60 40h40"/><path d="M100 20v40l40-20z" fill="currentColor"/><path d="M140 18v44M140 40h60"/>`
+ +`<circle cx="222" cy="40" r="20" stroke-width="2.5"/><path d="M208 26l28 28M236 26l-28 28" stroke-width="2"/>`+`<path d="M242 40h18v80H146M130 120H40V40h20"/>`
+ +`<path d="M130 112v16M146 104v32" stroke-width="3"/>`
+ +T(122,100,'−')+T(156,100,'+')+T(100,14,'A')+T(140,14,'K'));
+// transistors
+const tr=(pnp,lab)=>S('0 0 220 160',`<path d="M30 80h50M80 45v70" />`+`<path d="M80 66l50-30V12M80 94l50 30v24"/>`
+ +(pnp?`<path d="M100 106l-17-10 19-3z" fill="currentColor"/>`:`<path d="M128 123l-19-2 10-12z" fill="currentColor"/>`)
+ +(lab?T(22,74,'B','end',700)+T(142,20,'C','start',700)+T(142,146,lab,'start',700):''));
+D.npn=tr(0,'E');D.pnp=tr(1,'E');D.npnQ=tr(0,'?');D.pnpQ=tr(1,'?');
+D.sortie=S('0 0 300 200',`<path d="M30 180h250M30 190V15" stroke-width="2"/><path d="M280 180l-8-4v8zM30 15l-4 8h8z" fill="currentColor" stroke="none"/>`
+ +[150,115,80,45].map((y,i)=>`<path d="M30 180C40 ${y+15} 48 ${y} 62 ${y}L265 ${y-8}" stroke-width="3"/>`+T(272,y-10,'IB'+(4-i),'start',500)).join('')
+ +T(280,197,'VCE','end')+T(40,24,'IC','start'));
+// AOP
+const aop=(fb,ins)=>S('0 0 260 150',`<path d="M80 25v100l80-50z"/><path d="M40 50h40M40 100h40M160 75h60"/>`+T(92,56,'−')+T(92,106,'+')
+ +(fb==='neg'?`<path d="M195 75V15H60v35" stroke-width="2.5"/><circle cx="195" cy="75" r="3.5" fill="currentColor"/>`:fb==='pos'?`<path d="M195 75v62H60v-37" stroke-width="2.5"/><circle cx="195" cy="75" r="3.5" fill="currentColor"/>`:'')
+ +(ins?T(36,46,ins[0],'end',500)+T(36,96,ins[1],'end',500):'')+T(232,80,'Vs','start',500));
+D.aopNeg=aop('neg',['','Ve']);D.aopPos=aop('pos',['Ve','']);D.aopOpen=aop('',['Vref','Ve']);
+D.transfert=S('0 0 300 210',`<path d="M20 105h264M150 200V12" stroke-width="2"/><path d="M284 105l-8-4v8zM150 12l-4 8h8z" fill="currentColor" stroke="none"/>`
+ +`<path d="M25 170H135L165 40H275" stroke-width="3.5"/>`+T(280,122,'Ved','end')+T(160,22,'Vs','start')
+ +`<path d="M145 40h10M145 170h10" stroke-width="2"/>`+T(140,45,'+Vcc','end',500)+T(168,175,'−Vcc','start',500)
+ +`<circle cx="70" cy="145" r="13" stroke-width="2"/>`+T(70,150,'1')+`<circle cx="182" cy="100" r="13" stroke-width="2"/>`+T(182,105,'2')+`<circle cx="230" cy="65" r="13" stroke-width="2"/>`+T(230,70,'3'));
+// asservissements : réponse à un échelon
+const axes=`<path d="M30 180h258M30 190V12" stroke-width="2"/><path d="M288 180l-8-4v8zM30 12l-4 8h8z" fill="currentColor" stroke="none"/>`+T(288,198,'t','end')+T(40,22,'S','start');
+const rep=`<path d="M30 180C55 180 62 40 85 48C105 54 108 80 125 74C140 69 148 64 160 66C180 69 220 68 280 68" stroke-width="3.5"/>`;
+D.montee=S('0 0 300 210',axes+`<path d="M30 68H285" stroke-width="1.5" stroke-dasharray="6 6"/>`+T(26,72,'E','end',600)+rep
+ +`<path d="M30 169H285M30 79H285" stroke-width="1" stroke-dasharray="3 5"/>`+T(286,165,'10 %','end',500)+T(286,96,'90 %','end',500)
+ +`<path d="M48 169v14M64 79v104" stroke-width="2"/>`+`<path d="M48 196h16" stroke-width="2"/>`+T(56,210,'?'));
+D.ecart=S('0 0 300 210',axes+`<path d="M30 50H285" stroke-width="1.5" stroke-dasharray="6 6"/>`+T(26,55,'E','end',600)
+ +`<path d="M30 180C55 180 70 80 100 82C130 84 160 86 280 86" stroke-width="3.5"/>`+`<path d="M250 53v30" stroke-width="2"/><path d="M250 53l-4 8h8zM250 83l-4-8h8z" fill="currentColor" stroke="none"/>`+T(262,74,'?','start'));
+D.oscill=S('0 0 300 210',axes+`<path d="M30 90H285" stroke-width="1.5" stroke-dasharray="6 6"/>`+T(26,95,'E','end',600)
+ +`<path d="M30 180C45 180 50 30 65 32C80 34 82 140 95 140C110 140 112 50 125 52C140 54 142 120 155 118C168 116 170 70 182 72C195 74 196 104 208 102C220 100 225 88 240 90L280 90" stroke-width="3.5"/>`
+ +`<ellipse cx="135" cy="88" rx="80" ry="66" stroke-width="1.5" stroke-dasharray="5 5"/>`);
+D.rep5=S('0 0 300 210',axes+`<path d="M30 68H285" stroke-width="1.5" stroke-dasharray="6 6"/>`+T(26,72,'E','end',600)+rep
+ +`<path d="M30 60H285M30 76H285" stroke-width="1" stroke-dasharray="3 5"/>`+T(290,60,'+5 %','end',500)+T(290,92,'−5 %','end',500)
+ +`<path d="M128 72v111" stroke-width="2"/>`+`<path d="M30 196h98" stroke-width="2"/>`+T(80,210,'?'));
+const rt=(down)=>S('0 0 300 200',`<path d="M30 180h250M30 190V15" stroke-width="2"/><path d="M280 180l-8-4v8zM30 15l-4 8h8z" fill="currentColor" stroke="none"/>`
+ +T(280,197,'T (°C)','end')+T(40,24,'R','start')
+ +(down?`<path d="M45 30C70 110 120 150 265 165" stroke-width="3.5"/>`:`<path d="M45 165C190 150 240 110 265 30" stroke-width="3.5"/>`));
+D.ctn=rt(1);D.ctp=rt(0);
+return D})();
 const BANK=[
 {c:"D",p:5,q:"De quoi se compose une diode ?",o:["D'une jonction PN","D'une jonction PNP","De deux jonctions NPN"],a:0,x:"La diode est un composant électronique de la famille des semi-conducteurs, généralement en silicium. Elle se compose d'une seule jonction PN : zone P côté anode, zone N côté cathode. Selon sa polarisation, elle laisse passer ou bloque le courant.",r:"Diode = une jonction PN.",w:["","PNP (trois zones), c'est la structure d'un transistor bipolaire PNP, pas d'une diode.","NPN, c'est aussi un transistor. Une diode n'a que deux zones : P et N."]},
 {c:"D",p:5,q:"Sur le corps d'une diode, comment repère-t-on la cathode ?",o:["Par un point de couleur","Par un anneau circulaire","Par une broche plus longue"],a:1,x:"La jonction PN est enfermée dans un boîtier à deux broches (dipôle) : l'anode A et la cathode K. Sur le corps du composant, la cathode est repérée par un anneau circulaire. Sur le symbole, la cathode est du côté de la barre.",r:"Anneau = cathode K.",w:["Le cours ne parle pas de point : c'est un anneau qui repère la cathode.","","La longueur des broches n'est pas le repère donné par le cours pour la diode."]},
@@ -426,7 +495,34 @@ const BANK=[
 {s:1,c:"S",p:32,q:"Comment définit-on les trois qualités d'un système asservi ?",o:["Rapidité : oscillations · Stabilité : écart statique · Précision : temps de montée","Rapidité : temps de réponse à 5 % et temps de montée · Stabilité : nombre et amplitude des oscillations · Précision : écart statique","Rapidité : écart statique · Stabilité : temps de réponse · Précision : oscillations"],a:1,x:"Rapidité : temps de réponse à 5 % et temps de montée (10 % à 90 %). Stabilité : nombre et amplitude des oscillations. Précision : écart statique εs en régime permanent.",r:"Rapidité = temps · Stabilité = oscillations · Précision = écart statique.",w:["Les définitions sont mélangées : les oscillations définissent la stabilité, et l'écart statique la précision.","","Les définitions sont mélangées : l'écart statique définit la précision, les oscillations la stabilité."]},
 {s:1,c:"S",p:32,q:"Citez deux types de transmetteurs inductifs :",o:["Le LVDT et le RVDT","La CTN et la CTP","La roue phonique et la sonde capacitive"],a:0,x:"Les deux transmetteurs inductifs du cours sont le LVDT (linéaire, capteur de position) et le RVDT (rotatif, mesure d'une variation angulaire).",r:"Transmetteurs inductifs : LVDT (linéaire) · RVDT (rotatif).",w:["","CTN et CTP sont des thermistances.","La roue phonique mesure une vitesse et la sonde capacitive une quantité de carburant ; ce ne sont pas des transmetteurs inductifs du cours."]},
 {s:1,c:"S",p:32,q:"Que permet de mesurer une roue phonique, et quel autre appareil le permet aussi ?",o:["Une température · le thermocouple","Une vitesse de rotation · la génératrice tachymétrique","Une position angulaire · le résolveur"],a:1,x:"La roue phonique mesure une vitesse de rotation (elle génère une fréquence proportionnelle à la vitesse). La génératrice tachymétrique la mesure aussi : elle délivre une tension continue proportionnelle à sa vitesse de rotation.",r:"Vitesse de rotation : roue phonique ou génératrice tachymétrique.",w:["La roue phonique ne mesure pas de température.","","La roue phonique mesure une vitesse, pas une position angulaire."]},
-{s:1,c:"S",p:32,q:"Quel transmetteur mesure une quantité de carburant, et sur quel principe ?",o:["La sonde capacitive : la capacité varie selon que le diélectrique est de l'air ou du carburant","Le LVDT : le déplacement d'un flotteur modifie une inductance","Le thermocouple : le carburant change la température des jonctions"],a:0,x:"La sonde capacitive mesure la quantité de carburant. Ses condensateurs, montés dans des cannes ou des ceintures dans les réservoirs, sont plus ou moins immergés : le diélectrique est soit de l'air, soit du carburant, ce qui fait varier leur capacité.",r:"Carburant : sonde capacitive, diélectrique air/carburant.",w:["","Le LVDT est un capteur de position ; le cours ne l'utilise pas pour le carburant.","Le thermocouple mesure une différence de température, pas une quantité de carburant."]}
+{s:1,c:"S",p:32,q:"Quel transmetteur mesure une quantité de carburant, et sur quel principe ?",o:["La sonde capacitive : la capacité varie selon que le diélectrique est de l'air ou du carburant","Le LVDT : le déplacement d'un flotteur modifie une inductance","Le thermocouple : le carburant change la température des jonctions"],a:0,x:"La sonde capacitive mesure la quantité de carburant. Ses condensateurs, montés dans des cannes ou des ceintures dans les réservoirs, sont plus ou moins immergés : le diélectrique est soit de l'air, soit du carburant, ce qui fait varier leur capacité.",r:"Carburant : sonde capacitive, diélectrique air/carburant.",w:["","Le LVDT est un capteur de position ; le cours ne l'utilise pas pour le carburant.","Le thermocouple mesure une différence de température, pas une quantité de carburant."]},
+/* ---- Questions sur schéma (le schéma s'affiche dans la question, comme au vrai test) ---- */
+{c:"D",p:10,sv:"zener",q:"Quel composant représente ce symbole ?",o:["Une diode Zener","Une LED","Un thyristor"],a:0,x:"La barre de cathode coudée en forme de Z est le symbole de la diode Zener.",r:"Barre en Z = Zener.",w:["","La LED se reconnaît à ses deux flèches qui sortent du composant.","Le thyristor a une troisième broche : la gâchette G."]},
+{c:"D",p:10,sv:"led",q:"Quel composant représente ce symbole ?",o:["Une photodiode","Une LED","Une diode Zener"],a:1,x:"Les deux flèches qui sortent du composant indiquent qu'il émet de la lumière : c'est une LED (DEL).",r:"Flèches qui sortent = LED (elle émet).",w:["La photodiode a des flèches qui entrent dans le composant (elle reçoit la lumière).","","La Zener se reconnaît à sa barre en forme de Z, pas à des flèches."]},
+{c:"D",p:13,sv:"photo",q:"Quel composant représente ce symbole ?",o:["Une LED","Une photodiode","Un varistor"],a:1,x:"Les deux flèches qui entrent dans le composant indiquent qu'il reçoit la lumière : c'est une photodiode.",r:"Flèches qui entrent = photodiode (elle reçoit).",w:["La LED a des flèches qui sortent du composant (elle émet).","","Le varistor est un dipôle symétrique, sans triangle de diode ni flèches."]},
+{c:"D",p:12,sv:"thyr",q:"Quel composant représente ce symbole ?",o:["Un thyristor","Une diode Zener","Un transistor PNP"],a:0,x:"C'est un symbole de diode avec une troisième broche, la gâchette G : c'est le thyristor.",r:"Diode + gâchette G = thyristor.",w:["","La Zener n'a que deux broches, avec une barre en Z.","Un transistor se dessine avec une base, un collecteur et un émetteur, pas avec un triangle de diode."]},
+{c:"D",p:5,sv:"diode",q:"Ce symbole sans aucun ajout représente :",o:["Une diode Zener","Une diode standard (de redressement)","Une LED"],a:1,x:"Un triangle suivi d'une barre droite, sans flèches ni barre coudée : c'est la diode standard, utilisée par exemple pour le redressement.",r:"Triangle + barre droite = diode standard.",w:["La Zener a une barre coudée en Z.","","La LED a deux flèches qui sortent du composant."]},
+{c:"D",p:6,sv:"caract",q:"Sur cette caractéristique I = f(U) d'une diode, à quoi correspond la zone 3 ?",o:["À la conduction en sens direct","Au blocage","Au claquage (tension inverse atteignant Uc)"],a:2,x:"La zone 3 est en tension inverse, au-delà de Uc : le courant inverse augmente brusquement, c'est le claquage.",r:"Zone en inverse au-delà de Uc = claquage.",w:["La conduction directe est la zone 1, à droite de Uo.","Le blocage est la zone 2 : en inverse, avant Uc, le courant est presque nul.",""]},
+{c:"D",p:6,sv:"caract",q:"Sur cette caractéristique I = f(U) d'une diode, que représente la tension Uo ?",o:["La tension de seuil","La tension de claquage","La tension inverse maximale"],a:0,x:"Uo est la tension à partir de laquelle la diode commence à conduire en sens direct : c'est la tension de seuil.",r:"Uo = seuil de conduction.",w:["","La tension de claquage est Uc, en sens inverse.","La tension inverse se lit à gauche de l'origine, pas à droite."]},
+{c:"D",p:6,sv:"seuils",q:"Ces deux diodes ont des seuils différents. La diode 2 (seuil vers 0,6 V) est :",o:["Au germanium","Au silicium","Une diode Zener"],a:1,x:"Un seuil d'environ 0,6 V correspond au silicium ; environ 0,2 V correspond au germanium (diode 1).",r:"0,6 V = silicium · 0,2 V = germanium.",w:["Le germanium a un seuil d'environ 0,2 V : c'est la diode 1.","","Les deux courbes montrent un seuil direct ordinaire : rien n'indique une Zener."]},
+{c:"D",p:6,sv:"circuit",q:"Dans ce montage, le + du générateur arrive sur la cathode K. La diode est :",o:["Passante, la lampe s'allume","Bloquée, la lampe reste éteinte","Passante seulement si la lampe est puissante"],a:1,x:"La cathode est au potentiel le plus haut : la diode est polarisée en inverse, elle est bloquée et aucun courant ne circule.",r:"K au + : diode bloquée.",w:["Pour conduire, il faudrait l'anode A au potentiel le plus haut.","","La lampe ne change pas le sens de polarisation de la diode."]},
+{c:"T",p:5,sv:"npn",q:"Ce symbole représente :",o:["Un transistor NPN","Un transistor PNP","Un thyristor"],a:0,x:"La flèche de l'émetteur pointe vers l'extérieur : le courant sort par l'émetteur, c'est un NPN.",r:"Flèche qui sort = NPN.",w:["","Dans un PNP, la flèche de l'émetteur pointe vers l'intérieur.","Un thyristor se dessine avec un triangle de diode et une gâchette."]},
+{c:"T",p:5,sv:"pnp",q:"Ce symbole représente :",o:["Un transistor NPN","Un transistor PNP","Une photodiode"],a:1,x:"La flèche de l'émetteur pointe vers l'intérieur : le courant entre par l'émetteur, c'est un PNP.",r:"Flèche qui rentre = PNP.",w:["Dans un NPN, la flèche pointe vers l'extérieur.","","Une photodiode se dessine avec un triangle de diode et des flèches qui entrent."]},
+{c:"T",p:6,sv:"npn",q:"Dans ce transistor, comment circulent les courants ?",o:["IB et IC entrent, IE sort","IE entre, IB et IC sortent","IB entre, IC et IE sortent"],a:0,x:"C'est un NPN (flèche qui sort) : les courants de base et de collecteur entrent, et ressortent ensemble par l'émetteur (IE = IB + IC).",r:"NPN : IB et IC entrent, IE sort.",w:["","C'est le sens des courants d'un PNP.","Le courant de collecteur entre dans un NPN, il ne sort pas."]},
+{c:"T",p:6,sv:"pnp",q:"Dans ce transistor, comment circulent les courants ?",o:["IB et IC entrent, IE sort","IE entre, IB et IC sortent","IC entre, IB et IE sortent"],a:1,x:"C'est un PNP (flèche qui rentre) : le courant entre par l'émetteur et ressort par la base et le collecteur (IE = IB + IC).",r:"PNP : IE entre, IB et IC sortent.",w:["C'est le sens des courants d'un NPN.","","Dans un PNP, c'est par l'émetteur que le courant entre."]},
+{c:"T",p:5,sv:"npnQ",q:"Sur ce symbole, la borne repérée « ? » est :",o:["La base","Le collecteur","L'émetteur"],a:2,x:"La borne qui porte la flèche est toujours l'émetteur.",r:"La flèche est sur l'émetteur.",w:["La base est la borne de commande, à gauche, sans flèche.","Le collecteur est l'autre borne, sans flèche.",""]},
+{c:"T",p:7,sv:"sortie",q:"Ce réseau de courbes IC = f(VCE), une par valeur de IB, est la caractéristique :",o:["D'entrée","De sortie","De transfert"],a:1,x:"IC en fonction de VCE, c'est la caractéristique de sortie du transistor.",r:"IC = f(VCE) = sortie.",w:["La caractéristique d'entrée est IB = f(VBE).","","La caractéristique de transfert relie IB et IC."]},
+{c:"A",p:9,sv:"aopNeg",q:"Comment est monté cet AOP ?",o:["En contre-réaction négative","En contre-réaction positive","En boucle ouverte"],a:0,x:"La sortie Vs est réinjectée sur l'entrée − : c'est une contre-réaction négative, l'AOP fonctionne en zone linéaire.",r:"Retour sur − = contre-réaction négative.",w:["","En contre-réaction positive, le retour arrive sur l'entrée +.","En boucle ouverte, la sortie n'est réinjectée sur aucune entrée."]},
+{c:"A",p:11,sv:"aopPos",q:"Comment est monté cet AOP ?",o:["En contre-réaction négative","En contre-réaction positive","En boucle ouverte"],a:1,x:"La sortie Vs est réinjectée sur l'entrée + : c'est une contre-réaction positive, l'AOP fonctionne en commutation.",r:"Retour sur + = contre-réaction positive.",w:["En contre-réaction négative, le retour arrive sur l'entrée −.","","En boucle ouverte, la sortie n'est réinjectée sur aucune entrée."]},
+{c:"A",p:8,sv:"aopOpen",q:"Comment est monté cet AOP ?",o:["En contre-réaction négative","En contre-réaction positive","En boucle ouverte"],a:2,x:"Aucune liaison ne ramène la sortie vers une entrée : l'AOP est en boucle ouverte et fonctionne en comparateur (Vs = ±Vcc).",r:"Pas de retour = boucle ouverte = comparateur.",w:["Il faudrait un retour de la sortie sur l'entrée −.","Il faudrait un retour de la sortie sur l'entrée +.",""]},
+{c:"A",p:7,sv:"transfert",q:"Sur cette caractéristique de transfert Vs = f(Ved), la zone 2 correspond :",o:["À la zone linéaire","À la saturation à +Vcc","À la saturation à −Vcc"],a:0,x:"Dans la zone 2, Vs varie avec Ved : c'est la zone linéaire, utilisée en contre-réaction négative.",r:"Zone en pente = linéaire.",w:["","La saturation à +Vcc est la zone 3, où Vs reste fixe en haut.","La saturation à −Vcc est la zone 1, où Vs reste fixe en bas."]},
+{c:"A",p:7,sv:"transfert",q:"Sur cette caractéristique de transfert, dans la zone 3 (Ved > 0) la sortie Vs vaut :",o:["0 V","+Vcc","−Vcc"],a:1,x:"La zone 3 est la saturation pour Ved > 0 : la sortie reste bloquée à +Vcc.",r:"Ved > 0 en saturation : Vs = +Vcc.",w:["0 V n'est pas une valeur de saturation.","","−Vcc correspond à la zone 1, pour Ved < 0."]},
+{c:"S",p:10,sv:"montee",q:"Sur cette réponse à un échelon, le temps repéré « ? » entre 10 % et 90 % de la consigne E est :",o:["Le temps de réponse à 5 %","Le temps de montée Tm","L'écart statique"],a:1,x:"Le temps mis pour passer de 10 % à 90 % de la consigne est le temps de montée Tm.",r:"10 % → 90 % = temps de montée.",w:["Le temps de réponse à 5 % se mesure jusqu'à l'entrée définitive dans la bande E ± 5 %.","","L'écart statique est un écart de valeur, pas un temps."]},
+{c:"S",p:10,sv:"rep5",q:"Sur cette réponse à un échelon, le temps repéré « ? » jusqu'à l'entrée définitive dans la bande E ± 5 % est :",o:["Le temps de montée","Le temps de réponse à 5 %","Le régime permanent"],a:1,x:"C'est le temps au bout duquel la sortie reste définitivement entre E − 5 % et E + 5 % : le temps de réponse à 5 %.",r:"Entrée définitive dans ± 5 % = temps de réponse à 5 %.",w:["Le temps de montée va de 10 % à 90 % de la consigne.","","Le régime permanent est la phase qui suit, pas une mesure de temps."]},
+{c:"S",p:11,sv:"ecart",q:"Sur cette réponse, l'écart repéré « ? » entre la consigne E et la sortie stabilisée est :",o:["L'écart statique εs","Le temps de montée","Le dépassement"],a:0,x:"En régime permanent, l'écart entre la consigne E et la sortie S est l'écart statique εs : il mesure la précision.",r:"Écart E − S en régime permanent = écart statique (précision).",w:["","Le temps de montée est une durée, pas un écart de valeur.","Le dépassement correspond à une sortie qui passe au-dessus de E ; ici la sortie reste en dessous."]},
+{c:"S",p:11,sv:"oscill",q:"Le nombre et l'amplitude des oscillations entourées sur cette réponse caractérisent :",o:["La rapidité","La stabilité","La précision"],a:1,x:"La stabilité se juge au nombre et à l'amplitude des oscillations avant de se stabiliser.",r:"Oscillations = stabilité.",w:["La rapidité se juge au temps de réponse à 5 % et au temps de montée.","","La précision se juge à l'écart statique."]},
+{c:"S",p:14,sv:"ctn",q:"Cette courbe R = f(T) est celle :",o:["D'une thermistance CTN","D'une thermistance CTP","D'un thermocouple"],a:0,x:"La résistance diminue quand la température augmente : coefficient de température négatif, c'est une CTN.",r:"R diminue quand T monte = CTN.",w:["","Dans une CTP, la résistance augmente avec la température.","Un thermocouple fournit un courant, pas une résistance variable."]},
+{c:"S",p:14,sv:"ctp",q:"Cette courbe R = f(T) est celle :",o:["D'une thermistance CTN","D'une thermistance CTP","D'une sonde capacitive"],a:1,x:"La résistance augmente quand la température augmente : coefficient de température positif, c'est une CTP.",r:"R augmente quand T monte = CTP.",w:["Dans une CTN, la résistance diminue quand la température augmente.","","La sonde capacitive mesure une quantité de carburant."]},
 ];
 // Identifiants stables : lettre du cours + rang dans le cours (toujours ajouter les nouvelles questions à la fin d'un cours)
 {const c={};BANK.forEach(q=>{c[q.c]=(c[q.c]||0)+1;q.id=q.c+c[q.c]})}
@@ -1071,7 +1167,7 @@ function setTheme(v){theme=['light','dark'].includes(v)?v:'auto';LS.set('emhar-t
 setTheme(theme);
 
 /* ---------- Notes de version et mises à jour à venir (table news, modifiable dans Supabase) ---------- */
-const APP_VERSION='1.20';
+const APP_VERSION='1.21';
 let NEWS=LS.get('emhar-news',null);
 const dfr=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}catch(e){return ''}};
 async function loadNews(){
@@ -1292,6 +1388,7 @@ function question(){
   app.innerHTML=`
   ${quizTop(`${S.i+1} / ${n}`,`<span class="tag ${q.c}" style="background:${C.c}">${C.n}</span>${q.s?'<span class="syn">Synthèse</span>':''}`)}
   <p class="q">${esc(q.q)}</p>
+  ${q.sv&&QSVG[q.sv]?`<div class="qfig">${QSVG[q.sv]}</div>`:''}
   <div class="ans" role="radiogroup">${it.order.map((oi,k)=>`<button class="a${S.sel===k?' sel':''}" role="radio" aria-checked="${S.sel===k}" data-k="${k}"><span class="k">${'ABC'[k]}</span><span>${esc(q.o[oi])}</span></button>`).join('')}</div>
   ${review?'':`<div class="next" id="valbox"><button class="go" id="val" ${S.sel==null?'disabled':''}>${prev?'Confirmer ma réponse':'Valider ma réponse'}</button></div>`}
   <div id="fb"></div>
