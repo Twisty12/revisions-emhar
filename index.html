@@ -1272,6 +1272,7 @@ function liveRecover(){const L=LS.get(LIVE,null);if(!L||!Array.isArray(L.ids))re
   const rec={id:L.t.toString(36)+'ab',t:L.t,test:L.test||'E1',mode:'exam',kind:L.kind||'libre',n:res.length,g:res.filter(r=>r[1]===1).length,used:L.budget,budget:L.budget,timeout:1,res};
   if(!P.history.some(h=>h.id===rec.id)){P.history.push(rec);persist();liveNote=`Ton test blanc interrompu a été compté comme rendu : ${fr(note(rec))}/20.`}}
 /* Test blanc EMHAR 1 : 20 questions comme le vrai test, réparties selon la taille de chaque cours (à adapter par EMHAR) */
+const PASS_NOTE=12; // note de validation des EMHAR à l'école (12/20)
 const EXAM_N=20; // valeur par défaut si l'EMHAR ne précise pas son nombre de questions
 function lr(total,items){ // répartition au plus fort reste
   const sum=items.reduce((a,x)=>a+x.w,0);items.forEach(x=>{x.v=sum?total*x.w/sum:0;x.n=Math.floor(x.v)});
@@ -1558,7 +1559,7 @@ function results(){
   <h1>${S.exam?'Résultat du test blanc':'Résultat de l’entraînement'}</h1>
   <p class="sub">${TESTS[cfg.test].n} · ${modeLabel(rec)} · ${n} question${n>1?'s':''} · temps ${S.timed?`${mmss(used)} sur ${mmss(S.budget)}`:dur(used)}${S.qs.length>n?` · arrêté avant la fin (${S.qs.length} prévues)`:''}</p>
   ${S.timeout?`<p class="why mine"><b>Temps global écoulé.</b> ${skipped} question${skipped>1?'s':''} sans réponse ${skipped>1?'sont comptées':'est comptée'} comme fausse${skipped>1?'s':''}.</p>`:''}
-  ${S.exam?`<div class="pass ${good/n>=.75?'ok':'ko'}">${good/n>=.75?'Réussi':'Échoué'} <small>· seuil DSAE : 75 % de bonnes réponses (${Math.ceil(n*.75)} sur ${n})</small></div>`:''}
+  ${S.exam?`<div class="pass ${nt>=PASS_NOTE?'ok':'ko'}">${nt>=PASS_NOTE?'Validé':'Non validé'} <small>· il faut ${PASS_NOTE}/20 pour valider l’EMHAR</small></div>`:''}
   ${rankBox}
   ${S.saved&&(newB.length||gUp||xpGain)?`<div class="unlock">
     <div class="xpg">+${xpGain} XP</div>
