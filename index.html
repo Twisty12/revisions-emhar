@@ -100,6 +100,7 @@ button:focus-visible{outline:3px solid var(--D);outline-offset:2px}
 .rvi.miss{border-style:dashed}.rvi.miss .rvn{background:none;color:var(--ko);border:2px solid var(--ko)}
 .rvt{display:grid;gap:2px;min-width:0}.rvq{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rva{font-size:14px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rvi.miss .rva{color:var(--ko)}
 .ico-rank{flex:none;display:block}
+.pass{margin:12px 0 4px;padding:12px 14px;border-radius:14px;font-weight:800;font-size:20px;border:2px solid}.pass small{font-weight:500;font-size:14px;color:var(--mute)}.pass.ok{border-color:var(--ok);color:var(--ok)}.pass.ko{border-color:var(--ko);color:var(--ko)}
 .qfig{margin:4px 0 14px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);display:grid;place-items:center}.qfig svg{width:100%;max-width:340px;height:auto}
 .btiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
 .btile{display:grid;justify-items:center;align-content:start;gap:4px;padding:12px 6px 10px;border:1px solid var(--line);border-radius:16px;background:var(--bg);text-align:center;cursor:pointer}
@@ -680,7 +681,8 @@ S74:[{q:"La sonde capacitive de carburant fonctionne car :",o:["Sa capacité cha
 function pickForm(q){const base=BY_ID[q.id]||q,V=VARIANTS[base.id]||[];const k=Math.floor(Math.random()*(V.length+1));
   if(!k)return base;const f=V[k-1];return Object.assign({},base,{q:f.q,o:f.o,a:f.a,w:f.w,vi:k})}
 // Tests EMHAR : chaque test regroupe ses cours. Ajouter ici les prochains tests (EMHAR 2, 3...).
-const TESTS={E1:{n:"EMHAR 1",courses:["D","T","A","S"]}};
+// exam : nombre de questions du vrai test · dsae : sous-modules du guide DSAE GUI-147-003 (annexe I, BE1) et leur nombre minimum de QCM
+const TESTS={E1:{n:"EMHAR 1",courses:["D","T","A","S"],exam:20,dsae:[{n:"04.01 Semi-conducteurs",courses:["D","T","A"],q:15},{n:"04.03 Servomécanismes",courses:["S"],q:3}]}};
 const TKEYS=Object.keys(TESTS);
 const total=k=>BANK.filter(q=>q.c===k).length;
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -1167,7 +1169,7 @@ function setTheme(v){theme=['light','dark'].includes(v)?v:'auto';LS.set('emhar-t
 setTheme(theme);
 
 /* ---------- Notes de version et mises à jour à venir (table news, modifiable dans Supabase) ---------- */
-const APP_VERSION='1.22';
+const APP_VERSION='1.23';
 let NEWS=LS.get('emhar-news',null);
 const dfr=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})}catch(e){return ''}};
 async function loadNews(){
@@ -1238,7 +1240,7 @@ function parisDay(t){const p={};PFMT.formatToParts(new Date(t)).forEach(x=>p[x.t
 function weekKey(t){const x=parisDay(t),u=new Date(x.d+'T12:00:00Z');u.setUTCDate(u.getUTCDate()-x.w);return u.toISOString().slice(0,10)}
 const nextWeek=k=>{const u=new Date(k+'T12:00:00Z');u.setUTCDate(u.getUTCDate()+7);return u.toISOString().slice(0,10)};
 function seasonEnd(now=Date.now()){const nk=nextWeek(weekKey(now));for(const off of ['+01:00','+02:00']){const t=Date.parse(nk+'T00:00:00'+off);if(weekKey(t)===nk&&weekKey(t-1000)!==nk)return t}return Date.parse(nk+'T00:00:00+01:00')}
-const isRanked=h=>h.mode==='exam'&&(h.n===EXAM_N||h.n===52)&&h.t>=RANK_START; // 52 : format utilisé avant le 27/11
+const isRanked=h=>h.mode==='exam'&&(h.n===((TESTS[h.test]||{}).exam||EXAM_N)||h.n===52)&&h.t>=RANK_START; // 52 : format utilisé avant le 27/11
 function rankState(H=P.history,now=Date.now()){
   const recs=H.filter(isRanked).sort((a,b)=>a.t-b.t),cw=weekKey(now);
   let pr=0,wk=recs.length?weekKey(recs[0].t):cw,best=0;const hist=[],deltas={},perDay={};
@@ -1270,13 +1272,16 @@ function liveRecover(){const L=LS.get(LIVE,null);if(!L||!Array.isArray(L.ids))re
   const rec={id:L.t.toString(36)+'ab',t:L.t,test:L.test||'E1',mode:'exam',kind:L.kind||'libre',n:res.length,g:res.filter(r=>r[1]===1).length,used:L.budget,budget:L.budget,timeout:1,res};
   if(!P.history.some(h=>h.id===rec.id)){P.history.push(rec);persist();liveNote=`Ton test blanc interrompu a été compté comme rendu : ${fr(note(rec))}/20.`}}
 /* Test blanc EMHAR 1 : 20 questions comme le vrai test, réparties selon la taille de chaque cours (à adapter par EMHAR) */
-const EXAM_N=20;
+const EXAM_N=20; // valeur par défaut si l'EMHAR ne précise pas son nombre de questions
+function lr(total,items){ // répartition au plus fort reste
+  const sum=items.reduce((a,x)=>a+x.w,0);items.forEach(x=>{x.v=sum?total*x.w/sum:0;x.n=Math.floor(x.v)});
+  let left=total-items.reduce((a,x)=>a+x.n,0);items.slice().sort((a,b)=>(b.v-b.n)-(a.v-a.n)).forEach(x=>{if(left>0){x.n++;left--}});return items}
 function examSplit(K){
-  const tot=K.reduce((a,k)=>a+total(k),0),n=Math.min(EXAM_N,tot);
-  const raw=K.map(k=>({k,v:n*total(k)/tot}));raw.forEach(r=>r.n=Math.floor(r.v));
-  let left=n-raw.reduce((a,r)=>a+r.n,0);
-  raw.slice().sort((a,b)=>(b.v-b.n)-(a.v-a.n)).forEach(r=>{if(left>0){r.n++;left--}});
-  return raw;
+  const T=TESTS[cfg.test]||{},n=Math.min(T.exam||EXAM_N,K.reduce((a,k)=>a+total(k),0));
+  // 1) répartition entre sous-modules selon le guide DSAE, 2) dans chaque sous-module selon la taille des cours
+  const groups=(T.dsae||[{courses:K,q:1}]).map(g=>({courses:g.courses.filter(k=>K.includes(k)),w:g.q})).filter(g=>g.courses.length);
+  const out=[];lr(n,groups).forEach(g=>lr(g.n,g.courses.map(k=>({k,w:total(k)}))).forEach(x=>out.push({k:x.k,n:x.n})));
+  return K.map(k=>out.find(x=>x.k===k)||{k,n:0});
 }
 function examPick(K){let qs=[];examSplit(K||keys()).forEach(r=>qs=qs.concat(shuffle(BANK.filter(q=>q.c===r.k)).slice(0,r.n)));return shuffle(qs)}
 function setup(keep){const y0=window.scrollY;
@@ -1300,7 +1305,7 @@ function setup(keep){const y0=window.scrollY;
 
   ${exam?`
   <h2>Questions par cours</h2>
-  <p class="small-note">${sum} questions, comme le vrai test : nombre fixe, réparti selon la taille de chaque cours. Test classé (${Math.min(rankState().today,RANK_DAY)}/${RANK_DAY} aujourd’hui). Quitter la page pendant le test le compte comme rendu.</p>
+  <p class="small-note">${sum} questions, comme le vrai test, réparties selon le guide DSAE (${(TESTS[cfg.test].dsae||[]).map(g=>esc(g.n)).join(', ')}). Test classé (${Math.min(rankState().today,RANK_DAY)}/${RANK_DAY} aujourd’hui). Quitter la page pendant le test le compte comme rendu.</p>
   ${split.map(r=>`<div class="course cfix"><span class="dot" style="background:${COURSES[r.k].c}"></span><div><b>${COURSES[r.k].n}</b><small>${COURSES[r.k].ref}</small></div><span class="exn">${r.n}</span></div>`).join('')}
 `:`
   <h2>Questions par cours</h2>
@@ -1553,6 +1558,7 @@ function results(){
   <h1>${S.exam?'Résultat du test blanc':'Résultat de l’entraînement'}</h1>
   <p class="sub">${TESTS[cfg.test].n} · ${modeLabel(rec)} · ${n} question${n>1?'s':''} · temps ${S.timed?`${mmss(used)} sur ${mmss(S.budget)}`:dur(used)}${S.qs.length>n?` · arrêté avant la fin (${S.qs.length} prévues)`:''}</p>
   ${S.timeout?`<p class="why mine"><b>Temps global écoulé.</b> ${skipped} question${skipped>1?'s':''} sans réponse ${skipped>1?'sont comptées':'est comptée'} comme fausse${skipped>1?'s':''}.</p>`:''}
+  ${S.exam?`<div class="pass ${good/n>=.75?'ok':'ko'}">${good/n>=.75?'Réussi':'Échoué'} <small>· seuil DSAE : 75 % de bonnes réponses (${Math.ceil(n*.75)} sur ${n})</small></div>`:''}
   ${rankBox}
   ${S.saved&&(newB.length||gUp||xpGain)?`<div class="unlock">
     <div class="xpg">+${xpGain} XP</div>
